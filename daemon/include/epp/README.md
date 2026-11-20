@@ -1,0 +1,1 @@
+Los encabezados públicos de los módulos futuros se añadirán **cuando estén diseñadas sus interfaces**. `decision.hpp` es la única API implementada actualmente. Evitar duplicar definiciones entre módulos.

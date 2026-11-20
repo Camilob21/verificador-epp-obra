@@ -1,0 +1,15 @@
+# PLANTILLA: la ruta exacta del dataset real NO se conoce.
+# Comprobar con los labels reales antes de usar para entrenar.
+path: ./dataset_NO_SUBIR
+train: images/train
+val: images/val
+names:
+  0: person
+  1: helmet
+  2: no_helmet
+  3: vest
+  4: no_vest
+  5: goggles
+  6: no_goggle
+  7: gloves
+  8: no_gloves

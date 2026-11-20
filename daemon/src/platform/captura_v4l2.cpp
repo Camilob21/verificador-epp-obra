@@ -1,0 +1,5 @@
+// TODO: implementar modulo captura_v4l2; archivo esqueleto NO integrado en CMake.
+// No se deben publicar resultados ni asumir funcionalidad por este marcador.
+namespace epp { namespace pendiente {
+// Este archivo no define comportamientos operativos.
+} }

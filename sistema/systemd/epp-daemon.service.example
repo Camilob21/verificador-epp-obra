@@ -1,0 +1,16 @@
+# PLANTILLA, NO HABILITAR TODAVÍA: el daemon no ejecuta inferencia ni controla el relé.
+[Unit]
+Description=EPP daemon (prototipo - sin integrar)
+After=network.target
+
+[Service]
+Type=simple
+User=epp
+Group=epp
+ExecStart=/opt/epp/bin/epp-daemon
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target
