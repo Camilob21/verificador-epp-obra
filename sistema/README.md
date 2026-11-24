@@ -17,6 +17,20 @@ sudo reboot
 
 Comprobar tras reiniciar: `cat /sys/module/uvcvideo/parameters/quirks` debe dar `4` y `dmesg | grep -i "probe control"` no debe mostrar nada.
 
+## Dashboard con nginx (en la Jetson)
+
+```bash
+sudo apt install nginx
+sudo install -d /opt/epp/dashboard
+sudo install -m 644 dashboard/index.html dashboard/app.js dashboard/styles.css /opt/epp/dashboard/
+sudo install -m 644 dashboard/nginx-epp.conf /etc/nginx/sites-available/epp
+sudo ln -sf /etc/nginx/sites-available/epp /etc/nginx/sites-enabled/epp
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl restart nginx
+```
+
+Luego abrir `http://epp-jetson.local/` desde un equipo de la misma red.
+
 ## Instalar el daemon como servicio (en la Jetson)
 
 Desde `daemon/build`, ya compilado:

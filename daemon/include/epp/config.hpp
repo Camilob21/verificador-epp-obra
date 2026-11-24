@@ -26,6 +26,9 @@ struct Config {
   bool guardar_evidencia = true;   // imagenes resultado_NN_*.ppm
   std::string dir_evidencia = ".";
   double intervalo_telemetria_s = 5.0;
+  std::string db;                     // base SQLite de eventos; vacio = sin registro
+  std::string api_direccion = "127.0.0.1";  // solo local: el acceso desde la red pasa por nginx
+  int api_puerto = 8081;              // 0 = sin API
   ConfigDecision decision;
   ConfigMaquina maquina;
 };

@@ -35,3 +35,8 @@ umbral_deteccion = 0.25    # umbral al decodificar (la decision usa los suyos)
 guardar_evidencia = si     # imagenes resultado_NN_*.ppm (pueden mostrar personas: no publicarlas)
 dir_evidencia = /var/lib/epp
 intervalo_telemetria_s = 5
+db = /var/lib/epp/eventos.db      # vacio = no registrar decisiones (no guarda imagenes ni identidad)
+
+# ---- API local para el dashboard (nginx la publica en el puerto 80; ver dashboard/nginx-epp.conf)
+api_direccion = 127.0.0.1         # no cambiar a 0.0.0.0: la API no tiene autenticacion
+api_puerto = 8081                 # 0 = sin API

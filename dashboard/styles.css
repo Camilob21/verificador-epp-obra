@@ -1,6 +1,31 @@
-:root { color-scheme: light; font-family: system-ui, sans-serif; }
+:root { color-scheme: light; font-family: system-ui, sans-serif; --verde: #15803d; --rojo: #b91c1c; --amarillo: #ca8a04; }
 body { margin: 0; background: #f5f7fa; color: #17202a; }
-main { max-width: 740px; margin: 3rem auto; padding: 1.5rem; }
-section { background: white; padding: 1rem 1.5rem; border-radius: .6rem; margin-top: 1rem; }
-.warning { padding: 1rem; border-left: 4px solid #b91c1c; background: #fee2e2; }
-#estado { color: #b91c1c; }
+header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; background: #1f2937; color: white; }
+header h1 { margin: 0; font-size: 1.3rem; }
+main { max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; }
+section { background: white; padding: 1rem 1.5rem; border-radius: .6rem; margin-top: 1rem; box-shadow: 0 1px 2px #0001; }
+h2 { margin: .2rem 0 .6rem; font-size: 1.15rem; }
+h3 { margin: 1rem 0 .3rem; font-size: .95rem; color: #4b5563; }
+.pequeno { font-size: .9rem; color: #4b5563; }
+footer { text-align: center; padding: 1.5rem; }
+#panel-estado { display: flex; gap: 1.5rem; align-items: center; }
+#panel-estado h2 { font-size: 1.6rem; margin: 0; }
+.luz { width: 90px; height: 90px; border-radius: 50%; flex: none; border: 4px solid #0002; }
+.luz-apagado { background: #9ca3af; }
+.luz-verde { background: var(--verde); }
+.luz-rojo { background: var(--rojo); }
+.luz-amarillo { background: var(--amarillo); }
+.parpadeo { animation: parpadeo 1s steps(2, start) infinite; }
+@keyframes parpadeo { to { visibility: hidden; } }
+.cifras { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8rem; }
+.cifras div { background: #f3f4f6; border-radius: .5rem; padding: .7rem; text-align: center; }
+.cifras span { display: block; font-size: 1.6rem; font-weight: 600; }
+.cifras small { color: #4b5563; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid #e5e7eb; }
+.res-verde { color: var(--verde); font-weight: 600; }
+.res-rojo, .res-no_verificado { color: var(--rojo); font-weight: 600; }
+.chip { padding: .25rem .7rem; border-radius: 1rem; font-size: .85rem; }
+.chip-bien { background: #dcfce7; color: #14532d; }
+.chip-mal { background: #fee2e2; color: #7f1d1d; }
+@media (max-width: 600px) { .cifras { grid-template-columns: repeat(2, 1fr); } #panel-estado { flex-direction: column; } }

@@ -1,6 +1,7 @@
 #include "epp/config.hpp"
 
 #include <cerrno>
+#include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <functional>
@@ -93,6 +94,23 @@ const std::map<std::string, Aplicador>& tabla() {
       {"camara", texto(&Config::camara)},
       {"uart", texto(&Config::uart)},
       {"dir_evidencia", texto(&Config::dir_evidencia)},
+      {"db", texto(&Config::db)},
+      {"api_direccion",
+       [](Config& c, const std::string& v) -> std::string {
+         // solo IPv4 en forma de cuatro numeros; la validacion fina la hace inet_pton al abrir
+         int a, b, d, e;
+         char extra;
+         if (std::sscanf(v.c_str(), "%d.%d.%d.%d%c", &a, &b, &d, &e, &extra) != 4) return "debe ser una IPv4, p. ej. 127.0.0.1";
+         c.api_direccion = v;
+         return "";
+       }},
+      {"api_puerto",
+       [](Config& c, const std::string& v) -> std::string {
+         long n;
+         if (!aEntero(v, n) || n < 0 || n > 65535) return "debe ser un puerto entre 0 y 65535 (0 = sin API)";
+         c.api_puerto = static_cast<int>(n);
+         return "";
+       }},
       {"baudios",
        [](Config& c, const std::string& v) -> std::string {
          long n;
@@ -224,6 +242,8 @@ std::string describirConfig(const Config& c) {
   std::ostringstream o;
   o << "motor=" << c.motor << " camara=" << c.camara << " uart=" << (c.uart.empty() ? "(sin ESP32)" : c.uart)
     << " baudios=" << c.baudios << "\n"
+    << "registro: db=" << (c.db.empty() ? "(sin registro)" : c.db) << " api="
+    << (c.api_puerto ? c.api_direccion + ":" + std::to_string(c.api_puerto) : std::string("(sin API)")) << "\n"
     << "decision: persona>=" << c.decision.umbral_persona << " prenda>=" << c.decision.umbral_prenda
     << " fraccion>=" << c.decision.fraccion_minima << " cuadros>=" << c.decision.cuadros_minimos
     << " casco=" << (c.decision.exigir_casco ? "si" : "no") << " chaleco=" << (c.decision.exigir_chaleco ? "si" : "no")

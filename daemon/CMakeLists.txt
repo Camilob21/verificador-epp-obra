@@ -27,16 +27,32 @@ add_library(epp_core STATIC
     src/core/imagen_ppm.cpp
     src/core/config.cpp
     src/core/enlace.cpp
+    src/core/instrumentacion.cpp
+    src/core/http.cpp
+    src/core/api.cpp
 )
 target_include_directories(epp_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(epp_core PUBLIC protocolo)
 target_compile_options(epp_core PRIVATE ${EPP_AVISOS})
 
-# ---------------------------------------------------------------- plataforma: camara V4L2 y puerto serie
-# Solo dependen de cabeceras del kernel/POSIX: se compilan tambien en la CI para detectar errores.
-add_library(epp_plataforma STATIC src/platform/captura_v4l2.cpp src/platform/puerto_serie.cpp)
-target_include_directories(epp_plataforma PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/platform)
-target_link_libraries(epp_plataforma PUBLIC epp_core)
+# ---------------------------------------------------------------- SQLite (registro de eventos)
+# find_package(SQLite3) no existe en CMake 3.10: se busca a mano.
+find_path(SQLITE3_INCLUDE_DIR sqlite3.h)
+find_library(SQLITE3_LIB sqlite3)
+if(NOT SQLITE3_INCLUDE_DIR OR NOT SQLITE3_LIB)
+  message(FATAL_ERROR "Falta SQLite: sudo apt install libsqlite3-dev (Ubuntu/Jetson) o sudo dnf install sqlite-devel (Fedora)")
+endif()
+
+# ---------------------------------------------------------------- plataforma: camara, puerto serie, SQLite, HTTP, /proc
+# Solo dependen de POSIX/kernel y SQLite: se compilan tambien en la CI para detectar errores.
+add_library(epp_plataforma STATIC
+    src/platform/captura_v4l2.cpp
+    src/platform/puerto_serie.cpp
+    src/platform/registro_sqlite.cpp
+    src/platform/servidor_http.cpp
+    src/platform/sistema_linux.cpp)
+target_include_directories(epp_plataforma PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/platform ${SQLITE3_INCLUDE_DIR})
+target_link_libraries(epp_plataforma PUBLIC epp_core ${SQLITE3_LIB} Threads::Threads)
 target_compile_options(epp_plataforma PRIVATE ${EPP_AVISOS})
 
 # ---------------------------------------------------------------- plataforma: TensorRT (solo Jetson)
@@ -70,7 +86,11 @@ if(BUILD_TESTING)
       tests/test_protocolo.cpp
       tests/test_config.cpp
       tests/test_enlace.cpp
-      tests/test_puerto_serie.cpp)
+      tests/test_puerto_serie.cpp
+      tests/test_instrumentacion.cpp
+      tests/test_api.cpp
+      tests/test_registro.cpp
+      tests/test_servidor_http.cpp)
   target_include_directories(epp_tests PRIVATE ${GTEST_INCLUDE_DIRS})
   target_link_libraries(epp_tests PRIVATE epp_plataforma epp_core ${GTEST_LIBRARIES} Threads::Threads)
   add_test(NAME epp_tests COMMAND epp_tests)
