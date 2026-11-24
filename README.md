@@ -27,31 +27,45 @@ Botón factory reset ───────────────────�
 - ESP32-C6, semáforo LED, buzzer, relé, PIR y pulsador de reinicio (cableado pendiente de registrar).
 - MicroSD 32 GB; fuente Jetson 5 V / 3 A por jack con jumper J48 (según pruebas reportadas por el equipo).
 
-## Compilar el daemon en un PC Linux (sin GPU)
+## Compilar el daemon
 
-Instalar: compilador C/C++17, CMake **3.10 o superior** y Google Test **del sistema** (ejemplo Debian/Ubuntu: `sudo apt install build-essential cmake libgtest-dev`). En Fedora usar los paquetes equivalentes `gcc-c++ cmake gtest-devel`.
+El daemon tiene tres partes (ver `daemon/CMakeLists.txt`):
+
+- **`epp_core`** (`daemon/src/core`, C++17 puro): preprocesamiento YUYV→RGB→tensor, decodificación YOLOv8 + NMS, decisión con varios cuadros, máquina de estados e imágenes PPM de evidencia. Compila y se prueba en cualquier PC.
+- **`epp_v4l2`** (`daemon/src/platform/captura_v4l2.cpp`): captura de la webcam; solo necesita las cabeceras del kernel, así que también se compila en la CI.
+- **`epp-daemon`** (`main.cpp` + `inferencia_tensorrt.cpp`): **solo se compila si CMake encuentra CUDA y TensorRT**, es decir, en la Jetson.
+
+### En un PC Linux (sin GPU): núcleo + pruebas
+
+Instalar compilador C/C++17, CMake **3.10 o superior** y Google Test del sistema (Debian/Ubuntu: `sudo apt install build-essential cmake libgtest-dev`; Fedora: `sudo dnf install gcc-c++ cmake gtest-devel`).
 
 ```bash
-cd daemon
-mkdir -p build
-cd build
-cmake .. -DBUILD_TESTING=ON
-cmake --build . -j2
-ctest --output-on-failure
-./epp-daemon
+cmake -S daemon -B daemon/build -DBUILD_TESTING=ON
+cmake --build daemon/build -j2
+ctest --test-dir daemon/build --output-on-failure
 ```
 
-El ejecutable es solo **un esqueleto seguro**; no captura vídeo, no ejecuta YOLO y no autoriza accesos. Los tests prueban decisión básica y CRC, **no** la detección real. En Jetson se puede compilar igual, o sin pruebas:
+En un PC es normal el mensaje `TensorRT/CUDA no encontrados: epp-daemon se omite`.
+
+### En la Jetson Nano (JetPack 4.6.1)
+
+CMake 3.10 (el de Ubuntu 18.04) **no acepta `-S` ni `-B`**: se configura desde la carpeta `build`.
 
 ```bash
-cd daemon
-mkdir -p build
-cd build
+mkdir -p daemon/build
+cd daemon/build
 cmake .. -DBUILD_TESTING=OFF
-cmake --build . -j2
+make -j4
 ```
 
-Este CMake **no** usa `FetchContent`, `std::filesystem` ni banderas específicas de TensorRT. Los módulos de hardware están aislados en `daemon/src/platform/` y aún no se incluyen en la compilación. No activar un modo Jetson de inferencia que todavía no existe.
+Debe aparecer `TensorRT y CUDA encontrados: se compila epp-daemon`. El motor se genera **en la Jetson** a partir del ONNX (entrada 480×640) con `trtexec --onnx=best.onnx --saveEngine=yolov8n_480x640_fp16.engine --fp16`; no es portable entre versiones de TensorRT y no se sube al repositorio.
+
+```bash
+./epp-daemon ~/yolov8n_480x640_fp16.engine /dev/video0        # cámara, Ctrl+C para terminar
+./epp-daemon ~/yolov8n_480x640_fp16.engine imagen.ppm         # una imagen PPM 640x480
+```
+
+**Estado:** el daemon captura, infiere y decide, pero **aún no tiene enlace UART con el ESP32**: no enciende LEDs ni relé (el relé solo aparece como texto). Cada decisión guarda una imagen `resultado_NN_<verde|rojo>.ppm`, que puede mostrar personas y por eso está excluida en `.gitignore`.
 
 ## ESP32-C6: compilar y flashear (ESP-IDF)
 
