@@ -1,0 +1,4 @@
+# Variante de PRUEBA EN EL PC: el protocolo viaja por el conector USB nativo
+# (USB Serial/JTAG, /dev/ttyACM0) y los logs por el conector UART (/dev/ttyUSB0).
+# Se usa junto con sdkconfig.defaults (ver README, "Modo de prueba por USB").
+CONFIG_EPP_TRANSPORTE_USB=y

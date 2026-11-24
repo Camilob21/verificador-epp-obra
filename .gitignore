@@ -13,6 +13,12 @@ compile_commands.json
 firmware/esp32c6/sdkconfig
 firmware/esp32c6/sdkconfig.old
 firmware/esp32c6/managed_components/
+firmware/esp32c6/sdkconfig_usb
+firmware/esp32c6/sdkconfig_usb.old
+**/build_usb/
+**/build-proto/
+**/build-asan/
+resultados_integracion_*.md
 **/*.elf
 **/*.bin
 **/*.map

@@ -1,0 +1,26 @@
+# Valores por defecto del proyecto EPP (se aplican al crear sdkconfig).
+# Si cambia algo aquí, borre sdkconfig y vuelva a compilar (o use menuconfig).
+CONFIG_IDF_TARGET="esp32c6"
+
+# Consola de logs SOLO en UART0 (conector "UART" de la DevKitC-1, /dev/ttyUSB0).
+# Se desactiva la consola secundaria en el USB nativo para que, en el modo de
+# prueba por USB, los logs no se mezclen con las tramas del protocolo.
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+
+# Watchdog de tareas: 2 s y reinicio (pánico) si una tarea vigilada se cuelga.
+# Tras el reinicio, salidas_init_seguro() deja el relé apagado.
+CONFIG_ESP_TASK_WDT_EN=y
+CONFIG_ESP_TASK_WDT_INIT=y
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=2
+CONFIG_ESP_TASK_WDT_PANIC=y
+
+# Estadísticas de FreeRTOS para medir uso de CPU (instrumentación).
+CONFIG_FREERTOS_USE_TRACE_FACILITY=y
+CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS=y
+
+# Detector de caída de voltaje (activo por defecto; se deja explícito).
+CONFIG_ESP_BROWNOUT_DET=y
+
+# Optimización por tamaño y aserciones activas (útil para depurar).
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
