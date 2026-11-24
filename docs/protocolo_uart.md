@@ -61,6 +61,7 @@ En la Jetson, el servicio `nvgetty` abre una consola en `/dev/ttyTHS1` y hay que
 | 0x82 | EVENTO_BOTON | E → J | 1 | `1` = factory reset solicitado | **la Jetson debe responder ACK** |
 | 0x83 | TELEMETRIA | E → J | 42 | ver sección 4 | — |
 | 0x84 | EVENTO_ENLACE | E → J | 1 | 0 = latido perdido (fail-safe), 1 = restablecido | — |
+| 0x85 | EVENTO_DISTANCIA | E → J | 3 | distancia en mm (u16 LE), válida (0/1) | — (periódico, ~4 por segundo; agregado el 24-nov para el HC-SR04) |
 
 ¹ Valor de `esp_reset_reason_t` en ESP-IDF v5.5: 1 = encendido, 3 = esp_restart, 4 = pánico, 5 = watchdog de interrupciones, 6 = watchdog de tareas, 9 = brownout.
 

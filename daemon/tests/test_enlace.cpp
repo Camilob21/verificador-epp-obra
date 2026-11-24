@@ -199,6 +199,23 @@ TEST(Enlace, PideTelemetriaPeriodicamente) {
   EXPECT_EQ(pedidos, 3);  // t = 0, 5, 10
 }
 
+TEST(Enlace, DistanciaDelUltrasonico) {
+  EnlaceEsp32 e(1000.0);
+  proto_trama_t t;
+  proto_msg_evento_distancia(&t, 1625, true);
+  auto b = bytes(t, 3);
+  auto ev = e.recibir(b.data(), b.size(), 0.0);
+  ASSERT_EQ(ev.size(), 1u);
+  EXPECT_EQ(ev[0].tipo, EventoEsp32::Tipo::DISTANCIA);
+  EXPECT_EQ(ev[0].distancia_mm, 1625);
+  EXPECT_TRUE(ev[0].distancia_valida);
+  proto_msg_evento_distancia(&t, 0, false);
+  b = bytes(t, 4);
+  ev = e.recibir(b.data(), b.size(), 0.1);
+  ASSERT_EQ(ev.size(), 1u);
+  EXPECT_FALSE(ev[0].distancia_valida);
+}
+
 TEST(Enlace, BytesBasuraNoGeneranEventos) {
   EnlaceEsp32 e(1000.0);
   const uint8_t basura[] = {0x00, 0xAA, 0x55, 0xAA, 0x02, 0xFF, 0x13, 0x37, 0xAA};

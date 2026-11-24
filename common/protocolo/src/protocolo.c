@@ -100,6 +100,7 @@ static int len_esperada(uint8_t tipo)
     case PROTO_EVENTO_BOTON:     return 1;
     case PROTO_TELEMETRIA:       return (int)PROTO_TEL_LEN;
     case PROTO_EVENTO_ENLACE:    return 1;
+    case PROTO_EVENTO_DISTANCIA: return 3;
     default:                     return -1;
     }
 }
@@ -179,6 +180,13 @@ void proto_msg_evento_enlace(proto_trama_t *t, bool restablecido)
 {
     iniciar(t, PROTO_EVENTO_ENLACE, 1);
     t->datos[0] = restablecido ? 1u : 0u;
+}
+
+void proto_msg_evento_distancia(proto_trama_t *t, uint16_t distancia_mm, bool valida)
+{
+    iniciar(t, PROTO_EVENTO_DISTANCIA, 3);
+    put_u16(&t->datos[0], distancia_mm);
+    t->datos[2] = valida ? 1u : 0u;
 }
 
 void proto_msg_telemetria(proto_trama_t *t, const proto_telemetria_t *tel)
@@ -281,6 +289,16 @@ bool proto_leer_evento_enlace(const proto_trama_t *t, bool *restablecido)
         return false;
     }
     *restablecido = t->datos[0] != 0u;
+    return true;
+}
+
+bool proto_leer_evento_distancia(const proto_trama_t *t, uint16_t *distancia_mm, bool *valida)
+{
+    if (!es(t, PROTO_EVENTO_DISTANCIA) || t->datos[2] > 1u) {
+        return false;
+    }
+    *distancia_mm = get_u16(&t->datos[0]);
+    *valida = t->datos[2] != 0u;
     return true;
 }
 

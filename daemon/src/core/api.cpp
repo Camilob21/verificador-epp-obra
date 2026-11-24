@@ -74,7 +74,8 @@ std::string jsonEstado(const Instantanea& s) {
     << ",\"inferencia_ms\":" << jsonNumero(s.inferencia_ms, 1) << ",\"preproceso_ms\":" << jsonNumero(s.preproceso_ms, 1)
     << ",\"cuadros\":" << s.cuadros << ",\"verdes\":" << s.verdes << ",\"rojos\":" << s.rojos
     << ",\"ultimo\":" << (s.hay_ultimo ? jsonEvento(s.ultimo) : "null") << ",\"esp32\":{\"configurado\":"
-    << jsonBool(s.hay_uart) << ",\"enlace\":" << jsonBool(s.enlace_ok) << ",\"pir\":" << jsonBool(s.pir) << "}"
+    << jsonBool(s.hay_uart) << ",\"enlace\":" << jsonBool(s.enlace_ok) << ",\"pir\":" << jsonBool(s.pir)
+    << ",\"distancia_m\":" << (s.hay_distancia && s.distancia_valida ? jsonNumero(s.distancia_m, 3) : "null") << "}"
     << ",\"registro\":" << jsonBool(s.registro_activo) << ",\"camara_en_vivo\":" << jsonBool(s.camara_en_vivo)
     << "}";
   return o.str();

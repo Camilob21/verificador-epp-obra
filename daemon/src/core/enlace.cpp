@@ -150,6 +150,10 @@ void EnlaceEsp32::procesar(const proto_trama_t& t) {
       if (!proto_leer_telemetria(&t, &e.telemetria)) return;
       e.tipo = EventoEsp32::Tipo::TELEMETRIA;
       break;
+    case PROTO_EVENTO_DISTANCIA:
+      if (!proto_leer_evento_distancia(&t, &e.distancia_mm, &e.distancia_valida)) return;
+      e.tipo = EventoEsp32::Tipo::DISTANCIA;
+      break;
     default:
       return;  // tipos de Jetson->ESP32 o desconocidos: no se esperan aqui
   }

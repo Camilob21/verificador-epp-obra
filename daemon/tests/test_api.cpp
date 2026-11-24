@@ -51,6 +51,17 @@ TEST(Api, EstadoContieneLoPrincipal) {
   EXPECT_NE(r.cuerpo.find("\"ultimo\":null"), std::string::npos);
 }
 
+TEST(Api, DistanciaEnElEstado) {
+  Instantanea s;
+  Config c;
+  const auto p = analizarPeticion("GET /api/estado HTTP/1.1\r\n\r\n");
+  EXPECT_NE(atender(p, s, c, nullptr).cuerpo.find("\"distancia_m\":null"), std::string::npos);
+  s.hay_distancia = true;
+  s.distancia_valida = true;
+  s.distancia_m = 1.625;
+  EXPECT_NE(atender(p, s, c, nullptr).cuerpo.find("\"distancia_m\":1.625"), std::string::npos);
+}
+
 TEST(Api, EventosConLimiteYSinBase) {
   Instantanea s;
   Config c;

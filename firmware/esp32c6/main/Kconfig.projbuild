@@ -20,8 +20,12 @@ menu "EPP: firmware del semáforo"
             int "Entrada IN del módulo de relé"
             default 19
         config EPP_PIN_PIR
-            int "Salida OUT del sensor PIR"
+            int "OUT del PIR o ECHO del HC-SR04 (ECHO por divisor de voltaje: da 5 V)"
             default 18
+        config EPP_PIN_TRIG
+            int "TRIG del HC-SR04"
+            depends on EPP_SENSOR_ULTRASONICO
+            default 2
         config EPP_PIN_BOTON
             int "Botón de factory reset (a GND, pull-up interno)"
             default 3
@@ -113,6 +117,55 @@ menu "EPP: firmware del semáforo"
     endmenu
 
     menu "Entradas"
+        choice EPP_SENSOR_PRESENCIA
+            prompt "Sensor de presencia"
+            default EPP_SENSOR_ULTRASONICO
+            help
+                Ambos reportan la presencia con EVENTO_PIR (el daemon no cambia). El
+                ultrasonico ademas mide la distancia y la envia con EVENTO_DISTANCIA.
+            config EPP_SENSOR_PIR
+                bool "PIR HC-SR501 (requiere calibrar sensibilidad y tiempo en el modulo)"
+            config EPP_SENSOR_ULTRASONICO
+                bool "Ultrasonico HC-SR04 (mide distancia; sin calibracion fisica)"
+        endchoice
+
+        config EPP_US_DIST_MIN_CM
+            int "Presencia: distancia minima (cm)"
+            depends on EPP_SENSOR_ULTRASONICO
+            range 2 400
+            default 30
+        config EPP_US_DIST_MAX_CM
+            int "Presencia: distancia maxima (cm)"
+            depends on EPP_SENSOR_ULTRASONICO
+            range 10 400
+            default 220
+            help
+                La persona se para en la marca a 1,5-2 m. Mas lejos se considera
+                que no hay nadie en el punto de control.
+        config EPP_US_PERIODO_MS
+            int "Periodo entre mediciones (ms)"
+            depends on EPP_SENSOR_ULTRASONICO
+            range 60 1000
+            default 60
+            help
+                El fabricante recomienda al menos 60 ms entre disparos para que el
+                eco anterior no se confunda con el siguiente.
+        config EPP_US_CONFIRMAR_MS
+            int "Tiempo en rango para confirmar presencia (ms)"
+            depends on EPP_SENSOR_ULTRASONICO
+            range 0 5000
+            default 300
+        config EPP_US_AUSENCIA_MS
+            int "Tiempo fuera de rango para confirmar ausencia (ms)"
+            depends on EPP_SENSOR_ULTRASONICO
+            range 0 10000
+            default 1500
+        config EPP_US_REPORTE_MS
+            int "Periodo del EVENTO_DISTANCIA a la Jetson (ms, 0 = no enviar)"
+            depends on EPP_SENSOR_ULTRASONICO
+            range 0 10000
+            default 250
+
         config EPP_PIR_CALENTAMIENTO_S
             int "Calentamiento del PIR tras encender (s)"
             range 0 120

@@ -21,7 +21,8 @@ Los pines se verificaron contra la [guía de usuario oficial de la ESP32-C6-DevK
 | LED verde | 23 | J3-5 | ídem; los tres LEDs quedan juntos |
 | Buzzer | 20 | J3-8 | ídem |
 | Relé (IN) | 19 | J3-9 | ídem; no es pin de arranque, así que su nivel durante el boot no afecta el arranque |
-| PIR (OUT) | 18 | J3-10 | ídem |
+| PIR (OUT) o ECHO del HC-SR04 (por divisor) | 18 | J3-10 | ídem |
+| TRIG del HC-SR04 | 2 | rotulado "2" en la placa | GPIO libre, sin función de arranque |
 | Botón factory reset | 3 | J1-13 | ídem; pull-up interno |
 | UART1 TX → Jetson pin 10 (RX) | 10 | J1-10 | libre; UART1 se asigna a cualquier pin por la matriz GPIO |
 | UART1 RX ← Jetson pin 8 (TX) | 11 | J1-11 | ídem |
@@ -92,7 +93,25 @@ Así, el lado del optoacoplador funciona a 3,3 V: un "alto" del GPIO apaga el re
 
 Los contactos del relé (COM, NO, NC) se usan para la carga, por ejemplo un LED o una cerradura de 12 V con su propia fuente. **No conecte 110 V AC en el prototipo.**
 
-### 2.5 Sensor PIR (HC-SR501 o similar)
+### 2.5 Sensor de presencia: ultrasónico HC-SR04 (opción por defecto)
+
+Se cambió el PIR por un HC-SR04 porque el PIR necesita calibrarse a mano (sensibilidad y tiempo) y solo dice "hay o no hay"; el ultrasónico **mide la distancia** (variable física continua) y la presencia se define por software: alguien entre 30 cm y 2,2 m (ajustable en `menuconfig` → *Entradas*).
+
+```
+ HC-SR04 VCC  ← 5V (J1-14)
+ HC-SR04 GND  ← GND
+ HC-SR04 TRIG ← GPIO2                (3,3 V del ESP32 alcanzan para disparar el sensor)
+ HC-SR04 ECHO ─[1 kΩ]──●──[2 kΩ]── GND
+                       └──────────► GPIO18   (≈ 3,3 V en alto)
+```
+
+> ⚠️ **ECHO entrega 5 V y ningún pin del ESP32-C6 los tolera: el divisor es obligatorio.** Con 1 kΩ arriba y 2 kΩ abajo, 5 V × 2/3 ≈ 3,3 V. Sirve cualquier par con relación 1:2 (2,2 kΩ / 4,7 kΩ, 10 kΩ / 20 kΩ). **No use dos resistencias iguales:** darían 2,5 V, justo en el límite de lo que el ESP32 reconoce como "alto". Antes de conectar GPIO18, mida con el multímetro el punto medio del divisor con un objeto a 10 cm del sensor: debe dar pulsos por debajo de 3,6 V.
+
+El firmware dispara cada 60 ms, mide el ancho del eco con una interrupción, toma la mediana de las últimas 5 mediciones y aplica histéresis: 300 ms en rango para "presencia" y 1,5 s fuera de rango para "ausencia". La presencia viaja en el mismo `EVENTO_PIR` de siempre y la distancia en `EVENTO_DISTANCIA` (0x85), que el dashboard muestra en metros.
+
+### 2.5 bis Sensor PIR (HC-SR501, opción alternativa)
+
+Se elige en `menuconfig` → *EPP* → *Entradas* → *Sensor de presencia*.
 ```
  PIR VCC ← 5V      PIR GND ← GND      PIR OUT → GPIO18
 ```

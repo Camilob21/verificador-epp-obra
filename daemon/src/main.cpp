@@ -376,6 +376,13 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
               t_ultima_tel = t;
             }
             break;
+          case T::DISTANCIA: {  // ~4 por segundo: solo se guarda para la API, no se imprime
+            std::lock_guard<std::mutex> lock(api.m);
+            api.s.hay_distancia = true;
+            api.s.distancia_valida = e.distancia_valida;
+            api.s.distancia_m = e.distancia_mm / 1000.0;
+            break;
+          }
           case T::NACK:
             std::printf("[%6.1f s] ESP32 rechazo tipo 0x%02X (codigo %u)\n", t, e.tipo_rechazado, e.codigo);
             break;

@@ -77,12 +77,15 @@ struct Instantanea {
   Evento ultimo;
   // enlace con el ESP32
   bool hay_uart = false;
-  bool enlace_ok = false;
+  bool enlace_ok = false;  // hay trafico valido del ESP32 en el ultimo segundo
   EstadisticasEnlace enlace;
   proto_stats_t parser{};
   bool hay_telemetria = false;
   proto_telemetria_t telemetria{};
   bool pir = false;
+  bool hay_distancia = false;   // el ESP32 tiene el HC-SR04 y ya envio al menos una medicion
+  bool distancia_valida = false;
+  double distancia_m = 0;
   // sistema
   MuestreadorSistema sistema;
   bool registro_activo = false;

@@ -58,7 +58,8 @@ async function actualizarEstado() {
     $('luz').className = `luz ${claseLuz(e.luz)}`;
     texto('rele', e.rele ? 'activado' : 'apagado');
     texto('esp32', !e.esp32.configurado ? 'no configurado' : (e.esp32.enlace ? 'enlazado' : 'SIN ENLACE'));
-    texto('pir', e.esp32.pir ? 'presencia' : 'sin presencia');
+    texto('pir', e.esp32.pir ? 'sí' : 'no');
+    texto('distancia', e.esp32.distancia_m === null ? '—' : `${e.esp32.distancia_m.toFixed(2)} m`);
     texto('verdes', e.verdes);
     texto('rojos', e.rojos);
     texto('fps', e.fps.toFixed(1));

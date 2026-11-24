@@ -368,6 +368,38 @@ void test_PU18_vectores_documentados(void)
     TEST_ASSERT_EQUAL_HEX8_ARRAY(nack, buf, sizeof(nack));
 }
 
+/* PU-19: EVENTO_DISTANCIA (HC-SR04): ida y vuelta, little-endian, longitud y bandera invalidas. */
+void test_PU19_evento_distancia(void)
+{
+    uint8_t buf[PROTO_MAX_TRAMA];
+    proto_trama_t t, r;
+    proto_msg_evento_distancia(&t, 1625, true); /* 1,625 m = 0x0659 */
+    t.seq = 7;
+    size_t n = proto_codificar(&t, buf, sizeof(buf));
+    TEST_ASSERT_EQUAL_UINT(4u + 3u + 2u, n);
+    TEST_ASSERT_EQUAL_HEX8(PROTO_EVENTO_DISTANCIA, buf[1]);
+    TEST_ASSERT_EQUAL_HEX8(0x59, buf[4]); /* byte bajo primero */
+    TEST_ASSERT_EQUAL_HEX8(0x06, buf[5]);
+    TEST_ASSERT_EQUAL_HEX8(0x01, buf[6]);
+
+    uint16_t mm = 0;
+    bool valida = false;
+    TEST_ASSERT_TRUE(proto_leer_evento_distancia(&t, &mm, &valida));
+    TEST_ASSERT_EQUAL_UINT16(1625, mm);
+    TEST_ASSERT_TRUE(valida);
+
+    proto_msg_evento_distancia(&r, 0, false);
+    TEST_ASSERT_TRUE(proto_leer_evento_distancia(&r, &mm, &valida));
+    TEST_ASSERT_FALSE(valida);
+
+    r.datos[2] = 2; /* bandera fuera de rango */
+    TEST_ASSERT_FALSE(proto_leer_evento_distancia(&r, &mm, &valida));
+    r.datos[2] = 1;
+    r.len = 2; /* longitud incorrecta */
+    TEST_ASSERT_EQUAL_INT(PROTO_NACK_LONGITUD, proto_validar(&r));
+    TEST_ASSERT_FALSE(proto_leer_evento_distancia(&r, &mm, &valida));
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -389,5 +421,6 @@ int main(void)
     RUN_TEST(test_PU16_robustez_flujo_aleatorio);
     RUN_TEST(test_PU17_robustez_basura_con_sof);
     RUN_TEST(test_PU18_vectores_documentados);
+    RUN_TEST(test_PU19_evento_distancia);
     return UNITY_END();
 }

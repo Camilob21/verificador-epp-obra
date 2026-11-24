@@ -41,7 +41,7 @@ void app_main(void)
     esp_reset_reason_t motivo = esp_reset_reason();
     ESP_LOGI(TAG, "EPP firmware v%d.%d, protocolo v%u. Motivo del reinicio: %s (%d)",
              EPP_FW_MAYOR, EPP_FW_MENOR, PROTO_VERSION, motivo_texto(motivo), (int)motivo);
-    ESP_LOGI(TAG, "Pines: R=%d A=%d V=%d BZ=%d RELE=%d PIR=%d BOTON=%d TX=%d RX=%d",
+    ESP_LOGI(TAG, "Pines: R=%d A=%d V=%d BZ=%d RELE=%d PIR/ECHO=%d BOTON=%d TX=%d RX=%d",
              CONFIG_EPP_PIN_LED_ROJO, CONFIG_EPP_PIN_LED_AMARILLO, CONFIG_EPP_PIN_LED_VERDE,
              CONFIG_EPP_PIN_BUZZER, CONFIG_EPP_PIN_RELE, CONFIG_EPP_PIN_PIR, CONFIG_EPP_PIN_BOTON,
              CONFIG_EPP_PIN_UART_TX, CONFIG_EPP_PIN_UART_RX);
