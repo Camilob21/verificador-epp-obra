@@ -31,8 +31,9 @@ Botón factory reset ───────────────────�
 
 El daemon tiene tres partes (ver `daemon/CMakeLists.txt`):
 
-- **`epp_core`** (`daemon/src/core`, C++17 puro): preprocesamiento YUYV→RGB→tensor, decodificación YOLOv8 + NMS, decisión con varios cuadros, máquina de estados e imágenes PPM de evidencia. Compila y se prueba en cualquier PC.
-- **`epp_v4l2`** (`daemon/src/platform/captura_v4l2.cpp`): captura de la webcam; solo necesita las cabeceras del kernel, así que también se compila en la CI.
+- **`epp_core`** (`daemon/src/core`, C++17 puro): preprocesamiento YUYV→RGB→tensor, decodificación YOLOv8 + NMS, decisión con varios cuadros, máquina de estados, configuración (`epp.conf`), enlace con el ESP32 (latido, órdenes con ACK, eventos) e imágenes PPM de evidencia. Compila y se prueba en cualquier PC.
+- **`protocolo`** (`common/protocolo`, C99): la misma biblioteca de tramas que usa el firmware del ESP32.
+- **`epp_plataforma`** (`daemon/src/platform`): captura V4L2 de la webcam y puerto serie POSIX; solo necesitan cabeceras del kernel, así que también se compilan en la CI.
 - **`epp-daemon`** (`main.cpp` + `inferencia_tensorrt.cpp`): **solo se compila si CMake encuentra CUDA y TensorRT**, es decir, en la Jetson.
 
 ### En un PC Linux (sin GPU): núcleo + pruebas
@@ -61,23 +62,24 @@ make -j4
 Debe aparecer `TensorRT y CUDA encontrados: se compila epp-daemon`. El motor se genera **en la Jetson** a partir del ONNX (entrada 480×640) con `trtexec --onnx=best.onnx --saveEngine=yolov8n_480x640_fp16.engine --fp16`; no es portable entre versiones de TensorRT y no se sube al repositorio.
 
 ```bash
-./epp-daemon ~/yolov8n_480x640_fp16.engine /dev/video0        # cámara, Ctrl+C para terminar
-./epp-daemon ~/yolov8n_480x640_fp16.engine imagen.ppm         # una imagen PPM 640x480
+./epp-daemon -c ../../sistema/epp.conf.example          # cámara + ESP32, Ctrl+C para terminar
+./epp-daemon -c ../../sistema/epp.conf.example -n 600   # termina tras 600 cuadros
+./epp-daemon -c ../../sistema/epp.conf.example -i imagen.ppm   # una imagen PPM 640x480
 ```
 
-**Estado:** el daemon captura, infiere y decide, pero **aún no tiene enlace UART con el ESP32**: no enciende LEDs ni relé (el relé solo aparece como texto). Cada decisión guarda una imagen `resultado_NN_<verde|rojo>.ppm`, que puede mostrar personas y por eso está excluida en `.gitignore`.
+Umbrales, tiempos y dispositivos se leen de **`epp.conf`** (ejemplo comentado en `sistema/epp.conf.example`): se cambian sin recompilar. Con `uart =` vacío funciona sin ESP32 y las luces solo aparecen en la consola. Para dejarlo como servicio que arranca solo, ver `sistema/README.md`.
+
+Cada decisión guarda una imagen `resultado_NN_<verde|rojo>.ppm`, que puede mostrar personas y por eso está excluida en `.gitignore`.
 
 ## ESP32-C6: compilar y flashear (ESP-IDF)
 
-Requiere **ESP-IDF 5.x compatible con ESP32-C6**, instalado y exportado en el terminal (`idf.py --version`), hardware conectado y puerto serie conocido. Desde `firmware/esp32c6/`:
+Firmware completo en `firmware/esp32c6/` (semáforo, buzzer, relé, PIR, botón de factory reset, latido con fail-safe y telemetría), compilado y verificado con **ESP-IDF v5.5.6**. Pines, conexiones y pasos: `firmware/esp32c6/README.md` y `docs/firmware_guia_paso_a_paso.md`. Protocolo: `docs/protocolo_uart.md`. Para probarlo sin la Jetson está `firmware/esp32c6/tools/sim_jetson.py`.
+
+Pruebas del protocolo en un PC (18 pruebas Unity):
 
 ```bash
-idf.py set-target esp32c6
-idf.py build
-idf.py -p /dev/ttyACM0 flash monitor
+cmake -S common/protocolo -B build-proto && cmake --build build-proto && ctest --test-dir build-proto --output-on-failure
 ```
-
-**Cambiar** `/dev/ttyACM0` por el puerto real; en Windows usar `COMx`. `app_main` solo escribe un mensaje y calcula un CRC: **no activa LEDs, relé ni buzzer**. El proyecto independiente de pruebas Unity está en `firmware/esp32c6/tests/unity/`: construirlo y flashearlo por separado; consultar su README.
 
 ## Datos y modelos
 

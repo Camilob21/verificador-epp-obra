@@ -10,6 +10,12 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)   # en la Jetson el preprocesamiento sin -O2 es varias veces mas lento
 endif()
 set(EPP_AVISOS -Wall -Wextra)
+find_package(Threads REQUIRED)
+
+# ---------------------------------------------------------------- protocolo UART (C99, el mismo del firmware)
+# common/protocolo trae su propio CMakeLists: aqui solo se usa la biblioteca "protocolo" (sus pruebas
+# Unity se compilan cuando ese directorio es el proyecto principal; ver la CI).
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../common/protocolo ${CMAKE_BINARY_DIR}/protocolo)
 
 # ---------------------------------------------------------------- nucleo (C++17 puro)
 # Sin CUDA, TensorRT, V4L2, OpenCV ni red: compila y se prueba en cualquier PC (y en la CI).
@@ -19,24 +25,19 @@ add_library(epp_core STATIC
     src/core/preprocesamiento.cpp
     src/core/posprocesamiento.cpp
     src/core/imagen_ppm.cpp
+    src/core/config.cpp
+    src/core/enlace.cpp
 )
 target_include_directories(epp_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(epp_core PUBLIC protocolo)
 target_compile_options(epp_core PRIVATE ${EPP_AVISOS})
 
-# ---------------------------------------------------------------- protocolo UART (C99, compartido con el ESP32)
-# BLOQUE PROVISIONAL: usa el borrador actual de common/protocolo. Se reemplaza cuando entre la
-# biblioteca del firmware (common/protocolo con su propio CMakeLists.txt), por:
-#   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../common/protocolo ${CMAKE_BINARY_DIR}/protocolo)
-#   y enlazar el destino "protocolo" en lugar de epp_protocolo.
-add_library(epp_protocolo STATIC ../common/protocolo/protocolo.c)
-target_include_directories(epp_protocolo PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../common/protocolo)
-
-# ---------------------------------------------------------------- plataforma: camara V4L2
-# Solo depende de las cabeceras del kernel: se compila tambien en la CI para detectar errores.
-add_library(epp_v4l2 STATIC src/platform/captura_v4l2.cpp)
-target_include_directories(epp_v4l2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/platform)
-target_link_libraries(epp_v4l2 PUBLIC epp_core)
-target_compile_options(epp_v4l2 PRIVATE ${EPP_AVISOS})
+# ---------------------------------------------------------------- plataforma: camara V4L2 y puerto serie
+# Solo dependen de cabeceras del kernel/POSIX: se compilan tambien en la CI para detectar errores.
+add_library(epp_plataforma STATIC src/platform/captura_v4l2.cpp src/platform/puerto_serie.cpp)
+target_include_directories(epp_plataforma PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/platform)
+target_link_libraries(epp_plataforma PUBLIC epp_core)
+target_compile_options(epp_plataforma PRIVATE ${EPP_AVISOS})
 
 # ---------------------------------------------------------------- plataforma: TensorRT (solo Jetson)
 find_path(CUDA_INCLUDE_DIR cuda_runtime_api.h HINTS /usr/local/cuda/include)
@@ -48,17 +49,17 @@ if(CUDA_INCLUDE_DIR AND CUDART_LIB AND TENSORRT_INCLUDE_DIR AND NVINFER_LIB)
   message(STATUS "TensorRT y CUDA encontrados: se compila epp-daemon")
   add_executable(epp-daemon src/main.cpp src/platform/inferencia_tensorrt.cpp)
   target_include_directories(epp-daemon PRIVATE ${CUDA_INCLUDE_DIR} ${TENSORRT_INCLUDE_DIR})
-  target_link_libraries(epp-daemon PRIVATE epp_v4l2 epp_core ${NVINFER_LIB} ${CUDART_LIB})
+  target_link_libraries(epp-daemon PRIVATE epp_plataforma epp_core ${NVINFER_LIB} ${CUDART_LIB} Threads::Threads)
   target_compile_options(epp-daemon PRIVATE ${EPP_AVISOS})
+  install(TARGETS epp-daemon DESTINATION bin)
 else()
-  message(STATUS "TensorRT/CUDA no encontrados: epp-daemon se omite (normal en un PC); se compilan nucleo, camara y pruebas")
+  message(STATUS "TensorRT/CUDA no encontrados: epp-daemon se omite (normal en un PC); se compilan nucleo, plataforma y pruebas")
 endif()
 
 # ---------------------------------------------------------------- pruebas (GoogleTest del sistema)
 include(CTest)
 if(BUILD_TESTING)
   # No FetchContent (no existe en CMake 3.10). En la Jetson usar -DBUILD_TESTING=OFF.
-  find_package(Threads REQUIRED)
   find_package(GTest REQUIRED)
   add_executable(epp_tests
       tests/test_main.cpp
@@ -66,8 +67,11 @@ if(BUILD_TESTING)
       tests/test_maquina_estados.cpp
       tests/test_preprocesamiento.cpp
       tests/test_posprocesamiento.cpp
-      tests/test_protocolo.cpp)
+      tests/test_protocolo.cpp
+      tests/test_config.cpp
+      tests/test_enlace.cpp
+      tests/test_puerto_serie.cpp)
   target_include_directories(epp_tests PRIVATE ${GTEST_INCLUDE_DIRS})
-  target_link_libraries(epp_tests PRIVATE epp_core epp_protocolo ${GTEST_LIBRARIES} Threads::Threads)
+  target_link_libraries(epp_tests PRIVATE epp_plataforma epp_core ${GTEST_LIBRARIES} Threads::Threads)
   add_test(NAME epp_tests COMMAND epp_tests)
 endif()

@@ -1,0 +1,22 @@
+# Servicio del verificador de EPP. Instalacion: ver sistema/README.md
+[Unit]
+Description=Verificador de EPP (camara + YOLOv8n TensorRT + enlace con el ESP32)
+# Espera la hora por HTTP (sin RTC) para que los registros tengan fecha correcta, sin depender de ella.
+After=network-online.target hora-http.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=epp
+Group=epp
+# video: /dev/video0 | dialout: /dev/ttyTHS1 y /dev/ttyACM0
+SupplementaryGroups=video dialout
+ExecStart=/usr/local/bin/epp-daemon -c /etc/epp/epp.conf
+WorkingDirectory=/var/lib/epp
+# Si el daemon se cae, el ESP32 se pone en ROJO solo (800 ms sin latido) y systemd lo relanza.
+Restart=always
+RestartSec=2
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target
