@@ -113,3 +113,15 @@ TEST(Api, SistemaIncluyeTelemetriaDelMcu) {
   EXPECT_NE(j.find("\"heap_libre\":200000"), std::string::npos);
   EXPECT_NE(j.find("\"cpu_pct\":null,\"heap_libre\""), std::string::npos);
 }
+
+TEST(Api, CamaraEnVivoDesactivadaVaciaYActiva) {
+  Instantanea s;
+  Config c;
+  const auto p = analizarPeticion("GET /api/camara.jpg HTTP/1.1\r\n\r\n");
+  EXPECT_EQ(atender(p, s, c, nullptr).codigo, 404);  // sin fuente = desactivada
+  EXPECT_EQ(atender(p, s, c, nullptr, [] { return std::string(); }).codigo, 503);
+  const auto r = atender(p, s, c, nullptr, [] { return std::string("\xFF\xD8...\xFF\xD9", 7); });
+  EXPECT_EQ(r.codigo, 200);
+  EXPECT_EQ(r.tipo, "image/jpeg");
+  EXPECT_EQ(r.cuerpo.size(), 7u);
+}

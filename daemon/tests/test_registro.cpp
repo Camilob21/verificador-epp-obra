@@ -86,3 +86,33 @@ TEST(Registro, FechaIsoTieneZonaHoraria) {
   EXPECT_EQ(f[10], 'T');
   EXPECT_EQ(f[f.size() - 3], ':');
 }
+
+#include <sys/stat.h>
+#include <utime.h>
+
+#include <fstream>
+
+#include "sistema_linux.hpp"
+
+TEST(Evidencias, PodaConservaLasMasRecientes) {
+  char plantilla[] = "/tmp/epp_evid_XXXXXX";
+  ASSERT_NE(mkdtemp(plantilla), nullptr);
+  const std::string dir = plantilla;
+  for (int i = 0; i < 5; ++i) {
+    const std::string ruta = dir + "/evento_00000" + std::to_string(i) + "_rojo.jpg";
+    std::ofstream(ruta) << "x";
+    utimbuf t{1000 + i, 1000 + i};  // mtime creciente: el 0 es el mas viejo
+    utime(ruta.c_str(), &t);
+  }
+  std::ofstream(dir + "/eventos.db") << "no se toca";
+  EXPECT_EQ(podarArchivos(dir, "evento_", 3), 2);
+  struct stat st;
+  EXPECT_NE(stat((dir + "/evento_000000_rojo.jpg").c_str(), &st), 0);  // borrado
+  EXPECT_NE(stat((dir + "/evento_000001_rojo.jpg").c_str(), &st), 0);  // borrado
+  EXPECT_EQ(stat((dir + "/evento_000004_rojo.jpg").c_str(), &st), 0);  // conservado
+  EXPECT_EQ(stat((dir + "/eventos.db").c_str(), &st), 0);              // otro prefijo: intacto
+  EXPECT_EQ(podarArchivos(dir, "evento_", 0), 0);                      // 0 = sin limite
+  for (int i = 2; i < 5; ++i) std::remove((dir + "/evento_00000" + std::to_string(i) + "_rojo.jpg").c_str());
+  std::remove((dir + "/eventos.db").c_str());
+  rmdir(dir.c_str());
+}

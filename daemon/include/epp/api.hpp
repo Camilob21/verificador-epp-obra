@@ -4,6 +4,7 @@
 //   GET /api/eventos   ultimas decisiones registradas (?limite=N, por defecto 50, maximo 500)
 //   GET /api/sistema   instrumentacion: CPU, GPU, memoria, temperaturas, red, puertos, MCU
 //   GET /api/config    configuracion efectiva (solo lectura)
+//   GET /api/camara.jpg  ultimo cuadro con las detecciones dibujadas (solo si camara_en_vivo = si)
 //
 // Todo es puro (sin sockets): la "Instantanea" la llena el programa principal y aqui solo se
 // convierte a JSON. Asi la API se prueba en el PC (tests/test_api.cpp).
@@ -85,16 +86,19 @@ struct Instantanea {
   // sistema
   MuestreadorSistema sistema;
   bool registro_activo = false;
+  bool camara_en_vivo = false;
 };
 
 using FuenteEventos = std::function<std::vector<Evento>(int limite)>;
+using FuenteImagen = std::function<std::string()>;  // JPEG del ultimo cuadro; "" si aun no hay
 
 std::string jsonEvento(const Evento& e);
 std::string jsonEstado(const Instantanea& s);
 std::string jsonSistema(const Instantanea& s);
 std::string jsonConfig(const Config& c);
 
-// Enruta una peticion. 'eventos' puede ser nulo (sin base de datos).
-Respuesta atender(const Peticion& p, const Instantanea& s, const Config& c, const FuenteEventos& eventos);
+// Enruta una peticion. 'eventos' e 'imagen' pueden ser nulos (sin base de datos / sin vista en vivo).
+Respuesta atender(const Peticion& p, const Instantanea& s, const Config& c, const FuenteEventos& eventos,
+                  const FuenteImagen& imagen = FuenteImagen());
 
 }  // namespace epp

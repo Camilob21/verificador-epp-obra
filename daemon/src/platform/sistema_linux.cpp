@@ -1,6 +1,13 @@
 #include "sistema_linux.hpp"
 
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <algorithm>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace epp {
 
@@ -21,6 +28,29 @@ MuestreadorSistema::Textos leerTextosSistema() {
     x.temperaturas.emplace_back(tipo, leerArchivo(base + "/temp"));
   }
   return x;
+}
+
+int podarArchivos(const std::string& dir, const std::string& prefijo, int maximo) {
+  if (maximo <= 0) return 0;
+  DIR* d = opendir(dir.c_str());
+  if (!d) return 0;
+  std::vector<std::pair<long long, std::string>> archivos;  // (mtime en ns, ruta)
+  while (dirent* e = readdir(d)) {
+    const std::string nombre = e->d_name;
+    if (nombre.compare(0, prefijo.size(), prefijo) != 0) continue;
+    const std::string ruta = dir + "/" + nombre;
+    struct stat st;
+    if (stat(ruta.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) continue;
+    archivos.emplace_back(static_cast<long long>(st.st_mtim.tv_sec) * 1000000000LL + st.st_mtim.tv_nsec, ruta);
+  }
+  closedir(d);
+  if (static_cast<int>(archivos.size()) <= maximo) return 0;
+  std::sort(archivos.begin(), archivos.end());  // mas viejos primero
+  int borrados = 0;
+  const size_t sobran = archivos.size() - static_cast<size_t>(maximo);
+  for (size_t i = 0; i < sobran; ++i)
+    if (unlink(archivos[i].second.c_str()) == 0) ++borrados;
+  return borrados;
 }
 
 }  // namespace epp

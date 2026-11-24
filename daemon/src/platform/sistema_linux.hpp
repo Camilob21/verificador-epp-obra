@@ -4,4 +4,8 @@
 
 namespace epp {
 MuestreadorSistema::Textos leerTextosSistema();
+
+// Deja en 'directorio' solo los 'maximo' archivos mas recientes cuyo nombre empieza por 'prefijo'.
+// Devuelve cuantos borro. maximo <= 0: no borra nada.
+int podarArchivos(const std::string& directorio, const std::string& prefijo, int maximo);
 }

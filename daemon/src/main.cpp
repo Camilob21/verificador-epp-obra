@@ -34,6 +34,7 @@
 #include "epp/config.hpp"
 #include "epp/enlace.hpp"
 #include "epp/imagen_ppm.hpp"
+#include "epp/jpeg.hpp"
 #include "epp/maquina_estados.hpp"
 #include "epp/posprocesamiento.hpp"
 #include "epp/preprocesamiento.hpp"
@@ -99,6 +100,20 @@ struct EstadoApi {
 struct RegistroCompartido {
   std::mutex m;
   std::unique_ptr<epp::RegistroEventos> db;
+};
+
+// Ultimo cuadro para la vista en vivo. El hilo principal copia el RGB cada ~200 ms; el de la API
+// lo codifica a JPEG solo cuando alguien lo pide, y reutiliza la ultima codificacion si el cuadro
+// no cambio (varios navegadores abiertos no multiplican el trabajo).
+struct VistaVivo {
+  std::mutex m;
+  std::vector<uint8_t> rgb;
+  epp::Detecciones dets;
+  unsigned long long id = 0;
+  // cache de la codificacion (la protege su propio candado para no frenar al hilo principal)
+  std::mutex m_jpeg;
+  unsigned long long id_jpeg = 0;
+  std::string jpeg;
 };
 
 proto_buzzer_t buzzerDe(epp::Estado e) {
@@ -179,6 +194,8 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
   EstadoApi api;
   api.s.hay_uart = static_cast<bool>(comp);
   api.s.registro_activo = static_cast<bool>(reg.db);
+  api.s.camara_en_vivo = cfg.camara_en_vivo;
+  VistaVivo vista;
   std::unique_ptr<epp::ServidorHttp> servidor;
   std::thread hilo_api;
   struct UnirApi {
@@ -197,14 +214,35 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
           std::lock_guard<std::mutex> lock(reg.m);
           return reg.db->ultimos(limite);
         };
-      hilo_api = std::thread([&servidor, &api, &cfg, fuente]() {
+      epp::FuenteImagen fuente_img;
+      if (cfg.camara_en_vivo)
+        fuente_img = [&vista, &cfg]() -> std::string {
+          std::lock_guard<std::mutex> lj(vista.m_jpeg);
+          std::vector<uint8_t> rgb;
+          epp::Detecciones dets;
+          unsigned long long id;
+          {
+            std::lock_guard<std::mutex> lock(vista.m);
+            id = vista.id;
+            if (id == 0) return "";
+            if (id == vista.id_jpeg) return vista.jpeg;  // mismo cuadro: ya esta codificado
+            rgb = vista.rgb;
+            dets = vista.dets;
+          }
+          epp::dibujarCajas(rgb, dets);
+          const auto j = epp::codificarJpeg(rgb, epp::CAM_W, epp::CAM_H, cfg.calidad_jpeg);
+          vista.jpeg.assign(j.begin(), j.end());
+          vista.id_jpeg = id;
+          return vista.jpeg;
+        };
+      hilo_api = std::thread([&servidor, &api, &cfg, fuente, fuente_img]() {
         servidor->atenderHasta(g_salir, [&](const epp::Peticion& p) {
           epp::Instantanea copia;
           {
             std::lock_guard<std::mutex> lock(api.m);
             copia = api.s;
           }
-          return epp::atender(p, copia, cfg, fuente);
+          return epp::atender(p, copia, cfg, fuente, fuente_img);
         });
       });
       std::printf("API: http://%s:%d/api/estado\n", cfg.api_direccion.c_str(), servidor->puerto());
@@ -225,7 +263,7 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
   bool pir_presencia = false;
   int verdes = 0, rojos = 0, n = 0;
   double tCap = 0, tPre = 0, tInf = 0, tPost = 0, t_ultima_tel = -1e9;
-  double t_muestreo = -1e9;
+  double t_muestreo = -1e9, t_vista = -1e9;
   int cuadros_ventana = 0;
   double inf_ventana = 0, pre_ventana = 0;
   std::printf("Funcionando (Ctrl+C para terminar)\n\n");
@@ -249,6 +287,15 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
     ++cuadros_ventana;
     inf_ventana += ms(t2, t3);
     pre_ventana += ms(t1, t2);
+
+    // -- vista en vivo: copiar el cuadro actual ~5 veces por segundo (0,9 MB por copia)
+    if (cfg.camara_en_vivo && t - t_vista >= 0.2) {
+      std::lock_guard<std::mutex> lock(vista.m);
+      vista.rgb = rgb;
+      vista.dets = dets;
+      ++vista.id;
+      t_vista = t;
+    }
 
     // -- instrumentacion para la API, una vez por segundo (leer /proc fuera del candado)
     if (t - t_muestreo >= 1.0) {
@@ -394,9 +441,13 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
         api.s.hay_ultimo = true;
       }
       if (cfg.guardar_evidencia) {
-        char nombre[64];
-        std::snprintf(nombre, sizeof(nombre), "/resultado_%02d_%s.ppm", verdes + rojos, verde ? "verde" : "rojo");
-        epp::guardarPpm(cfg.dir_evidencia + nombre, rgb, dets);
+        // JPEG (~50 KB) en vez de PPM (900 KB); se conservan solo las max_evidencias mas recientes
+        char nombre[96];
+        std::snprintf(nombre, sizeof(nombre), "/evento_%06lld_%s.jpg", ev.id ? ev.id : static_cast<long long>(verdes + rojos),
+                      ev.resultado.c_str());
+        if (!epp::guardarJpeg(cfg.dir_evidencia + nombre, rgb, dets, 85))
+          std::printf("AVISO: no se pudo guardar la evidencia en %s\n", cfg.dir_evidencia.c_str());
+        epp::podarArchivos(cfg.dir_evidencia, "evento_", cfg.max_evidencias);
       }
     }
     std::fflush(stdout);

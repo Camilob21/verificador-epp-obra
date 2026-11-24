@@ -133,6 +133,27 @@ const std::map<std::string, Aplicador>& tabla() {
          c.guardar_evidencia = b;
          return "";
        }},
+      {"camara_en_vivo",
+       [](Config& c, const std::string& v) -> std::string {
+         bool b;
+         if (!aBool(v, b)) return "debe ser si/no";
+         c.camara_en_vivo = b;
+         return "";
+       }},
+      {"max_evidencias",
+       [](Config& c, const std::string& v) -> std::string {
+         long n;
+         if (!aEntero(v, n) || n < 0 || n > 100000) return "debe ser un entero entre 0 y 100000 (0 = sin limite)";
+         c.max_evidencias = static_cast<int>(n);
+         return "";
+       }},
+      {"calidad_jpeg",
+       [](Config& c, const std::string& v) -> std::string {
+         long n;
+         if (!aEntero(v, n) || n < 30 || n > 95) return "debe ser un entero entre 30 y 95";
+         c.calidad_jpeg = static_cast<int>(n);
+         return "";
+       }},
       {"intervalo_telemetria_s",
        [](Config& c, const std::string& v) -> std::string {
          double d;
@@ -243,7 +264,9 @@ std::string describirConfig(const Config& c) {
   o << "motor=" << c.motor << " camara=" << c.camara << " uart=" << (c.uart.empty() ? "(sin ESP32)" : c.uart)
     << " baudios=" << c.baudios << "\n"
     << "registro: db=" << (c.db.empty() ? "(sin registro)" : c.db) << " api="
-    << (c.api_puerto ? c.api_direccion + ":" + std::to_string(c.api_puerto) : std::string("(sin API)")) << "\n"
+    << (c.api_puerto ? c.api_direccion + ":" + std::to_string(c.api_puerto) : std::string("(sin API)"))
+    << " camara_en_vivo=" << (c.camara_en_vivo ? "si" : "no") << " evidencias=" << (c.guardar_evidencia ? "si" : "no")
+    << " (max " << c.max_evidencias << ")\n"
     << "decision: persona>=" << c.decision.umbral_persona << " prenda>=" << c.decision.umbral_prenda
     << " fraccion>=" << c.decision.fraccion_minima << " cuadros>=" << c.decision.cuadros_minimos
     << " casco=" << (c.decision.exigir_casco ? "si" : "no") << " chaleco=" << (c.decision.exigir_chaleco ? "si" : "no")

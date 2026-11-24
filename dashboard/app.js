@@ -63,6 +63,10 @@ async function actualizarEstado() {
     texto('rojos', e.rojos);
     texto('fps', e.fps.toFixed(1));
     texto('inferencia', e.inferencia_ms.toFixed(0));
+    if (e.camara_en_vivo && $('panel-vivo').hidden) {
+      $('panel-vivo').hidden = false;
+      refrescarVivo();
+    }
   } catch (err) {
     $('conexion').textContent = 'sin conexión con el daemon';
     $('conexion').className = 'chip chip-mal';
@@ -127,6 +131,15 @@ async function actualizarSistema() {
   } catch (err) {
     texto('enlace', `Sistema no disponible: ${err.message}`);
   }
+}
+
+// Vista en vivo: pide la siguiente imagen solo cuando terminó de cargar la anterior (~5 por segundo),
+// así una red lenta no acumula peticiones.
+function refrescarVivo() {
+  const img = $('vivo');
+  img.onload = () => { texto('vivo-aviso', ''); setTimeout(refrescarVivo, 200); };
+  img.onerror = () => { texto('vivo-aviso', 'Sin imagen de la cámara en este momento.'); setTimeout(refrescarVivo, 1000); };
+  img.src = `/api/camara.jpg?t=${Date.now()}`;
 }
 
 actualizarEstado();

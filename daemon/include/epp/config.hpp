@@ -23,7 +23,10 @@ struct Config {
   std::string uart;              // vacio = sin ESP32 (solo consola)
   int baudios = 115200;
   float umbral_deteccion = 0.25f;  // umbral al decodificar; la decision usa los suyos
-  bool guardar_evidencia = true;   // imagenes resultado_NN_*.ppm
+  bool guardar_evidencia = true;   // imagen JPEG de cada decision (evento_<id>_<resultado>.jpg)
+  int max_evidencias = 200;        // se borran las mas viejas; 0 = sin limite
+  bool camara_en_vivo = false;     // publicar /api/camara.jpg (muestra personas a la red local)
+  int calidad_jpeg = 75;
   std::string dir_evidencia = ".";
   double intervalo_telemetria_s = 5.0;
   std::string db;                     // base SQLite de eventos; vacio = sin registro

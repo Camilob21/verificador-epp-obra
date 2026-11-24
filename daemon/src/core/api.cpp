@@ -75,7 +75,8 @@ std::string jsonEstado(const Instantanea& s) {
     << ",\"cuadros\":" << s.cuadros << ",\"verdes\":" << s.verdes << ",\"rojos\":" << s.rojos
     << ",\"ultimo\":" << (s.hay_ultimo ? jsonEvento(s.ultimo) : "null") << ",\"esp32\":{\"configurado\":"
     << jsonBool(s.hay_uart) << ",\"enlace\":" << jsonBool(s.enlace_ok) << ",\"pir\":" << jsonBool(s.pir) << "}"
-    << ",\"registro\":" << jsonBool(s.registro_activo) << "}";
+    << ",\"registro\":" << jsonBool(s.registro_activo) << ",\"camara_en_vivo\":" << jsonBool(s.camara_en_vivo)
+    << "}";
   return o.str();
 }
 
@@ -133,11 +134,13 @@ std::string jsonConfig(const Config& c) {
     << ",\"umbral_persona\":" << jsonNumero(c.decision.umbral_persona) << ",\"umbral_prenda\":"
     << jsonNumero(c.decision.umbral_prenda) << ",\"fraccion_minima\":" << jsonNumero(c.decision.fraccion_minima)
     << ",\"cuadros_minimos\":" << c.decision.cuadros_minimos << ",\"usar_pir\":" << jsonBool(c.maquina.usar_pir)
-    << ",\"duracion_resultado_s\":" << jsonNumero(c.maquina.duracion_resultado_s, 1) << "}";
+    << ",\"duracion_resultado_s\":" << jsonNumero(c.maquina.duracion_resultado_s, 1)
+    << ",\"camara_en_vivo\":" << jsonBool(c.camara_en_vivo) << "}";
   return o.str();
 }
 
-Respuesta atender(const Peticion& p, const Instantanea& s, const Config& c, const FuenteEventos& eventos) {
+Respuesta atender(const Peticion& p, const Instantanea& s, const Config& c, const FuenteEventos& eventos,
+                  const FuenteImagen& imagen) {
   if (!p.valida) return respuestaError(400, "peticion invalida");
   if (p.metodo != "GET") return respuestaError(405, "solo GET");
   Respuesta r;
@@ -147,6 +150,11 @@ Respuesta atender(const Peticion& p, const Instantanea& s, const Config& c, cons
     r.cuerpo = jsonSistema(s);
   } else if (p.ruta == "/api/config") {
     r.cuerpo = jsonConfig(c);
+  } else if (p.ruta == "/api/camara.jpg") {
+    if (!imagen) return respuestaError(404, "vista en vivo desactivada (camara_en_vivo = no en epp.conf)");
+    r.cuerpo = imagen();
+    if (r.cuerpo.empty()) return respuestaError(503, "todavia no hay imagen");
+    r.tipo = "image/jpeg";
   } else if (p.ruta == "/api/eventos") {
     if (!eventos) return respuestaError(503, "registro de eventos desactivado (db vacio en epp.conf)");
     int limite = 50;
