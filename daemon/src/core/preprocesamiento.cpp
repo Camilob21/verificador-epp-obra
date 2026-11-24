@@ -1,6 +1,7 @@
 #include "epp/preprocesamiento.hpp"
 
 #include "epp/deteccion.hpp"
+#include <cstddef>
 
 namespace epp {
 
