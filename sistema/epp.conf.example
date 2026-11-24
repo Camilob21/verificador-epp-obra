@@ -1,0 +1,37 @@
+# /etc/epp/epp.conf — configuracion del verificador de EPP (epp-daemon)
+#
+# Se lee al arrancar: tras editarlo, reiniciar con  sudo systemctl restart epp-daemon
+# Un valor invalido o una clave mal escrita NO detienen el sistema: se usa el valor por defecto y
+# aparece un "AVISO config" en  journalctl -u epp-daemon
+# Los valores de abajo son los por defecto (medidos en la prueba B del 19-nov).
+
+# ---- Hardware
+motor = /home/epp/yolov8n_480x640_fp16.engine
+camara = /dev/video0
+# UART del conector J41 (pines 8 y 10). Vacio = sin ESP32. Por USB seria /dev/ttyACM0.
+uart = /dev/ttyTHS1
+baudios = 115200
+
+# ---- Decision (fase 1: casco + chaleco)
+umbral_persona = 0.40      # confianza minima de la caja "person"
+umbral_prenda = 0.50       # confianza minima de casco / chaleco
+fraccion_minima = 0.60     # la prenda debe aparecer en este % de los cuadros con persona
+cuadros_minimos = 8        # cuadros con persona necesarios para decidir
+exigir_casco = si
+exigir_chaleco = si
+
+# ---- Flujo del punto de control
+usar_pir = no              # si = esperar al PIR del ESP32 antes de buscar a la persona
+alto_minimo = 0.45         # la persona debe ocupar este % del alto de la imagen
+margen_centro = 0.30       # y estar centrada (+- este % del ancho)
+cuadros_en_posicion = 5
+ventana_verificacion_s = 1.5
+espera_max_verificacion_s = 4.0
+espera_max_persona_s = 15.0
+duracion_resultado_s = 5.0 # maximo 8: el ESP32 corta el verde a los 8 s
+
+# ---- Registro
+umbral_deteccion = 0.25    # umbral al decodificar (la decision usa los suyos)
+guardar_evidencia = si     # imagenes resultado_NN_*.ppm (pueden mostrar personas: no publicarlas)
+dir_evidencia = /var/lib/epp
+intervalo_telemetria_s = 5

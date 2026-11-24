@@ -1,0 +1,142 @@
+# Opciones del firmware EPP. Se cambian con: idf.py menuconfig -> "EPP: firmware del semáforo"
+# Los valores por defecto corresponden a la ESP32-C6-DevKitC-1 (ver README).
+
+menu "EPP: firmware del semáforo"
+
+    menu "Pines (GPIO)"
+        config EPP_PIN_LED_ROJO
+            int "LED rojo"
+            default 21
+        config EPP_PIN_LED_AMARILLO
+            int "LED amarillo"
+            default 22
+        config EPP_PIN_LED_VERDE
+            int "LED verde"
+            default 23
+        config EPP_PIN_BUZZER
+            int "Buzzer"
+            default 20
+        config EPP_PIN_RELE
+            int "Entrada IN del módulo de relé"
+            default 19
+        config EPP_PIN_PIR
+            int "Salida OUT del sensor PIR"
+            default 18
+        config EPP_PIN_BOTON
+            int "Botón de factory reset (a GND, pull-up interno)"
+            default 3
+        config EPP_PIN_UART_TX
+            int "UART1 TX (va al pin 10 = RX de la Jetson)"
+            default 10
+        config EPP_PIN_UART_RX
+            int "UART1 RX (va al pin 8 = TX de la Jetson)"
+            default 11
+    endmenu
+
+    menu "Actuadores"
+        config EPP_RELE_ACTIVO_BAJO
+            bool "El módulo de relé se activa con nivel BAJO en IN"
+            default y
+            help
+                La mayoría de módulos de relé de 5 V con optoacoplador se activan
+                con IN en bajo. Verifíquelo con la prueba de bring-up del relé
+                antes de conectar cualquier carga.
+
+        choice EPP_BUZZER_TIPO
+            prompt "Tipo de buzzer"
+            default EPP_BUZZER_ACTIVO
+            config EPP_BUZZER_ACTIVO
+                bool "Activo (suena con voltaje DC)"
+            config EPP_BUZZER_PASIVO
+                bool "Pasivo (necesita PWM)"
+        endchoice
+
+        config EPP_BUZZER_FREQ_HZ
+            int "Frecuencia del PWM para buzzer pasivo (Hz)"
+            depends on EPP_BUZZER_PASIVO
+            range 500 6000
+            default 2700
+
+        config EPP_PRUEBA_LAMPARAS
+            bool "Prueba de lámparas al arrancar (rojo, amarillo, verde y bip)"
+            default y
+
+        config EPP_VERDE_MAX_MS
+            int "Tiempo máximo en verde con relé activado (ms)"
+            range 1000 60000
+            default 8000
+            help
+                Protección propia del ESP32: si la Jetson deja el estado VERDE más
+                de este tiempo, el ESP32 pasa a ROJO y apaga el relé, aunque el
+                latido siga llegando. 0 no está permitido a propósito.
+    endmenu
+
+    menu "Enlace con la Jetson"
+        choice EPP_TRANSPORTE
+            prompt "Por dónde viaja el protocolo"
+            default EPP_TRANSPORTE_UART1
+            config EPP_TRANSPORTE_UART1
+                bool "UART1 en los pines TX/RX (uso normal, con la Jetson)"
+            config EPP_TRANSPORTE_USB
+                bool "Puerto USB nativo de la placa (pruebas en el PC sin adaptador)"
+                help
+                    El protocolo usa el conector USB marcado "USB" (USB Serial/JTAG,
+                    /dev/ttyACM0 en Linux). La consola de logs sigue en el conector
+                    "UART" (/dev/ttyUSB0). Necesita dos cables USB-C.
+        endchoice
+
+        config EPP_UART_BAUDIOS
+            int "Velocidad (baudios)"
+            default 115200
+
+        config EPP_LATIDO_TIMEOUT_MS
+            int "Tiempo sin latido válido para entrar en fail-safe (ms)"
+            range 300 5000
+            default 800
+            help
+                La Jetson envía un latido cada ~200 ms. 800 ms tolera 3 latidos
+                perdidos y, sumado al periodo de revisión (50 ms), deja la reacción
+                en <= 850 ms, dentro del requisito de 1 s.
+
+        config EPP_ENLACE_PERIODO_MS
+            int "Periodo con que se revisa el latido (ms)"
+            range 10 200
+            default 50
+
+        config EPP_RX_TIMEOUT_TRAMA_MS
+            int "Silencio que descarta una trama incompleta (ms)"
+            range 5 500
+            default 20
+            help
+                A 115200 baudios una trama máxima (54 B) tarda ~4.7 ms. 20 ms de
+                silencio en medio de una trama indica que se perdió el resto.
+    endmenu
+
+    menu "Entradas"
+        config EPP_PIR_CALENTAMIENTO_S
+            int "Calentamiento del PIR tras encender (s)"
+            range 0 120
+            default 60
+            help
+                Los PIR tipo HC-SR501 dan disparos falsos durante el primer minuto
+                aprox. Mientras tanto no se envían EVENTO_PIR.
+        config EPP_PIR_FILTRO_MS
+            int "Tiempo que la salida del PIR debe ser estable (ms)"
+            range 10 2000
+            default 200
+        config EPP_BOTON_ANTIRREBOTE_MS
+            int "Antirrebote del botón (ms)"
+            range 10 200
+            default 50
+        config EPP_BOTON_FACTORY_MS
+            int "Tiempo presionado para factory reset (ms)"
+            range 2000 15000
+            default 5000
+    endmenu
+
+    config EPP_TELEMETRIA_PERIODO_MS
+        int "Periodo de la telemetría automática (ms, 0 = solo bajo pedido)"
+        range 0 60000
+        default 1000
+
+endmenu

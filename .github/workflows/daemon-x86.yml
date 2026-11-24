@@ -22,3 +22,8 @@ jobs:
       - name: Pruebas con CTest
         working-directory: daemon/build
         run: ctest --output-on-failure
+      - name: Pruebas Unity del protocolo (common/protocolo)
+        run: |
+          cmake -S common/protocolo -B build-proto
+          cmake --build build-proto
+          ctest --test-dir build-proto --output-on-failure

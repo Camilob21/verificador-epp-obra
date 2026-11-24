@@ -1,0 +1,9 @@
+build/
+build_usb/
+sdkconfig
+sdkconfig_usb
+sdkconfig.old
+sdkconfig_usb.old
+tools/resultados_integracion_*.md
+resultados_integracion_*.md
+__pycache__/
