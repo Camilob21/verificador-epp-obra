@@ -11,8 +11,8 @@
  *      Al terminar el calentamiento se envía un EVENTO_PIR con listo=1.
  * HC-SR04 (opción por defecto, ver menuconfig → Entradas): cada EPP_US_PERIODO_MS se da un pulso
  *      de 10 µs en TRIG; una interrupción en ECHO mide el ancho del eco con esp_timer (µs).
- *      distancia = ancho × 343 m/s / 2. Se toma la mediana de las últimas 5 mediciones (descarta
- *      ecos sueltos) y la presencia se decide con histéresis temporal: en rango [MIN, MAX]
+ *      distancia = ancho × 343 m/s / 2. Se toma la mediana de las últimas 10 mediciones válidas
+ *      (descarta ecos sueltos; tolera que la ropa absorba muchos ecos) y la presencia se decide con histéresis temporal: en rango [MIN, MAX]
  *      durante EPP_US_CONFIRMAR_MS = presencia; fuera de rango EPP_US_AUSENCIA_MS = ausencia.
  *      La presencia se reporta con el mismo EVENTO_PIR (el daemon no cambia) y la distancia
  *      con EVENTO_DISTANCIA cada EPP_US_REPORTE_MS.
@@ -53,7 +53,10 @@ static int64_t ahora_ms(void) { return esp_timer_get_time() / 1000; }
 
 #if CONFIG_EPP_SENSOR_ULTRASONICO
 /* ------------------------- HC-SR04 ------------------------- */
-#define US_MUESTRAS      5      /* ventana de la mediana */
+/* Ventana de 10 mediciones (600 ms) con minimo 2 validas: con ropa como blanco el HC-SR04 pierde
+ * muchos ecos (medido el 24-nov: 5-16 de 16 validos a 45-100 cm, 0-3 de 16 a 1,5 m). */
+#define US_MUESTRAS      10
+#define US_MIN_VALIDOS   2
 #define US_ANCHO_MAX_US  30000  /* > 30 ms (> 5 m) = sin eco util */
 
 static _Atomic uint32_t s_eco_subida_us = 0; /* 32 bits: el C6 es RISC-V de 32 bits (atomicos nativos) */
@@ -102,7 +105,7 @@ static void us_init(void)
     ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_EPP_PIN_PIR, isr_eco, NULL));
 }
 
-/* Mediana de los valores validos (0 = no valido). Devuelve 0 si hay menos de 3 validos. */
+/* Mediana de los valores validos (0 = no valido). Devuelve 0 si hay menos de US_MIN_VALIDOS. */
 static uint16_t mediana_validos(const uint16_t *v, int n)
 {
     uint16_t o[US_MUESTRAS];
@@ -119,7 +122,7 @@ static uint16_t mediana_validos(const uint16_t *v, int n)
         }
         o[j] = v[i];
     }
-    return k >= 3 ? o[k / 2] : 0;
+    return k >= US_MIN_VALIDOS ? o[k / 2] : 0;
 }
 #endif
 

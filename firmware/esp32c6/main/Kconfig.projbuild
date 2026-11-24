@@ -133,15 +133,16 @@ menu "EPP: firmware del semáforo"
             int "Presencia: distancia minima (cm)"
             depends on EPP_SENSOR_ULTRASONICO
             range 2 400
-            default 30
+            default 20
         config EPP_US_DIST_MAX_CM
             int "Presencia: distancia maxima (cm)"
             depends on EPP_SENSOR_ULTRASONICO
             range 10 400
-            default 220
+            default 100
             help
-                La persona se para en la marca a 1,5-2 m. Mas lejos se considera
-                que no hay nadie en el punto de control.
+                El sensor va junto a la marca del piso, apuntando al torso a ~50-80 cm
+                (no junto a la camara): con ropa como blanco el HC-SR04 deja de recibir
+                eco a mas de ~1,2 m (medido el 24-nov: 0-3 de 16 ecos a 1,5 m).
         config EPP_US_PERIODO_MS
             int "Periodo entre mediciones (ms)"
             depends on EPP_SENSOR_ULTRASONICO
