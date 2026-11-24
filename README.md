@@ -49,16 +49,20 @@ En un PC es normal el mensaje `TensorRT/CUDA no encontrados: epp-daemon se omite
 
 ### En la Jetson Nano (JetPack 4.6.1)
 
+CMake 3.10 (el de Ubuntu 18.04) **no acepta `-S` ni `-B`**: se configura desde la carpeta `build`.
+
 ```bash
-cmake -S daemon -B daemon/build -DBUILD_TESTING=OFF
-cmake --build daemon/build -j2
+mkdir -p daemon/build
+cd daemon/build
+cmake .. -DBUILD_TESTING=OFF
+make -j4
 ```
 
-Debe aparecer `TensorRT y CUDA encontrados: se compila epp-daemon`. El motor se genera **en la Jetson** a partir del ONNX (entrada 480×640) con `trtexec --onnx=best.onnx --saveEngine=best_480x640_fp16.engine --fp16`; no es portable entre versiones de TensorRT y no se sube al repositorio.
+Debe aparecer `TensorRT y CUDA encontrados: se compila epp-daemon`. El motor se genera **en la Jetson** a partir del ONNX (entrada 480×640) con `trtexec --onnx=best.onnx --saveEngine=yolov8n_480x640_fp16.engine --fp16`; no es portable entre versiones de TensorRT y no se sube al repositorio.
 
 ```bash
-./daemon/build/epp-daemon best_480x640_fp16.engine /dev/video0        # cámara, Ctrl+C para terminar
-./daemon/build/epp-daemon best_480x640_fp16.engine imagen.ppm         # una imagen PPM 640x480
+./epp-daemon ~/yolov8n_480x640_fp16.engine /dev/video0        # cámara, Ctrl+C para terminar
+./epp-daemon ~/yolov8n_480x640_fp16.engine imagen.ppm         # una imagen PPM 640x480
 ```
 
 **Estado:** el daemon captura, infiere y decide, pero **aún no tiene enlace UART con el ESP32**: no enciende LEDs ni relé (el relé solo aparece como texto). Cada decisión guarda una imagen `resultado_NN_<verde|rojo>.ppm`, que puede mostrar personas y por eso está excluida en `.gitignore`.
