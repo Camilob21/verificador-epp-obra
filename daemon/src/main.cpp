@@ -2,14 +2,15 @@
 //
 //   webcam (V4L2) -> TensorRT FP16 (YOLOv8n) -> decodificacion + NMS -> maquina de estados
 //   -> ESP32-C6 por UART (semaforo, buzzer, rele) con latido y fail-safe
+//   -> registro de decisiones en SQLite y API HTTP local (127.0.0.1:8081) para el dashboard
 //
 // Uso:  epp-daemon [-c archivo.conf] [-n cuadros] [-i imagen.ppm]
 //   -c  configuracion (por defecto /etc/epp/epp.conf si existe; ver sistema/epp.conf.example)
 //   -n  terminar tras N cuadros (por defecto 0 = sin limite, Ctrl+C o systemctl stop)
 //   -i  modo imagen: lista las detecciones de un PPM 640x480 y termina
 //
-// Hilos: el principal hace camara + inferencia + decision; un segundo hilo atiende el UART
-// (latido cada 200 ms aunque la inferencia tarde, ordenes con ACK y eventos del ESP32).
+// Hilos: el principal hace camara + inferencia + decision; uno atiende el UART (latido cada
+// 200 ms aunque la inferencia tarde) y otro la API HTTP. Comparten datos solo bajo candado.
 
 #include <unistd.h>
 
@@ -29,14 +30,19 @@
 #include <vector>
 
 #include "captura_v4l2.hpp"
+#include "epp/api.hpp"
 #include "epp/config.hpp"
 #include "epp/enlace.hpp"
 #include "epp/imagen_ppm.hpp"
+#include "epp/jpeg.hpp"
 #include "epp/maquina_estados.hpp"
 #include "epp/posprocesamiento.hpp"
 #include "epp/preprocesamiento.hpp"
 #include "inferencia_tensorrt.hpp"
 #include "puerto_serie.hpp"
+#include "registro_sqlite.hpp"
+#include "servidor_http.hpp"
+#include "sistema_linux.hpp"
 
 namespace {
 
@@ -83,6 +89,32 @@ void hiloEnlace(epp::PuertoSerie* puerto, Compartido* c, Reloj::time_point inici
     }
   }
 }
+
+// Lo que la API lee: el hilo principal lo actualiza y el de la API lo copia, ambos bajo candado.
+struct EstadoApi {
+  std::mutex m;
+  epp::Instantanea s;
+};
+
+// El registro se usa desde el hilo principal (escribir) y el de la API (leer)
+struct RegistroCompartido {
+  std::mutex m;
+  std::unique_ptr<epp::RegistroEventos> db;
+};
+
+// Ultimo cuadro para la vista en vivo. El hilo principal copia el RGB cada ~200 ms; el de la API
+// lo codifica a JPEG solo cuando alguien lo pide, y reutiliza la ultima codificacion si el cuadro
+// no cambio (varios navegadores abiertos no multiplican el trabajo).
+struct VistaVivo {
+  std::mutex m;
+  std::vector<uint8_t> rgb;
+  epp::Detecciones dets;
+  unsigned long long id = 0;
+  // cache de la codificacion (la protege su propio candado para no frenar al hilo principal)
+  std::mutex m_jpeg;
+  unsigned long long id_jpeg = 0;
+  std::string jpeg;
+};
 
 proto_buzzer_t buzzerDe(epp::Estado e) {
   switch (e) {
@@ -145,6 +177,80 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
   } else {
     std::printf("Sin ESP32 (uart vacio): las luces y el rele solo se muestran en la consola\n");
   }
+  // -- registro de eventos (opcional: sin base, el sistema sigue decidiendo)
+  RegistroCompartido reg;
+  if (!cfg.db.empty()) {
+    try {
+      reg.db.reset(new epp::RegistroEventos(cfg.db));
+      std::printf("Registro de eventos: %s (%lld eventos guardados)\n", cfg.db.c_str(), reg.db->contar());
+    } catch (const std::exception& e) {
+      std::printf("AVISO: sin registro de eventos: %s\n", e.what());
+    }
+  }
+  if (!epp::relojConfiable())
+    std::printf("AVISO: el reloj no parece sincronizado; los eventos se marcan con hora_confiable = false\n");
+
+  // -- API HTTP local (hilo propio)
+  EstadoApi api;
+  api.s.hay_uart = static_cast<bool>(comp);
+  api.s.registro_activo = static_cast<bool>(reg.db);
+  api.s.camara_en_vivo = cfg.camara_en_vivo;
+  VistaVivo vista;
+  std::unique_ptr<epp::ServidorHttp> servidor;
+  std::thread hilo_api;
+  struct UnirApi {
+    std::thread& h;
+    ~UnirApi() {
+      g_salir = true;
+      if (h.joinable()) h.join();
+    }
+  } guardia_api{hilo_api};
+  if (cfg.api_puerto > 0) {
+    try {
+      servidor.reset(new epp::ServidorHttp(cfg.api_direccion, cfg.api_puerto));
+      epp::FuenteEventos fuente;
+      if (reg.db)
+        fuente = [&reg](int limite) {
+          std::lock_guard<std::mutex> lock(reg.m);
+          return reg.db->ultimos(limite);
+        };
+      epp::FuenteImagen fuente_img;
+      if (cfg.camara_en_vivo)
+        fuente_img = [&vista, &cfg]() -> std::string {
+          std::lock_guard<std::mutex> lj(vista.m_jpeg);
+          std::vector<uint8_t> rgb;
+          epp::Detecciones dets;
+          unsigned long long id;
+          {
+            std::lock_guard<std::mutex> lock(vista.m);
+            id = vista.id;
+            if (id == 0) return "";
+            if (id == vista.id_jpeg) return vista.jpeg;  // mismo cuadro: ya esta codificado
+            rgb = vista.rgb;
+            dets = vista.dets;
+          }
+          epp::dibujarCajas(rgb, dets);
+          const auto j = epp::codificarJpeg(rgb, epp::CAM_W, epp::CAM_H, cfg.calidad_jpeg);
+          vista.jpeg.assign(j.begin(), j.end());
+          vista.id_jpeg = id;
+          return vista.jpeg;
+        };
+      hilo_api = std::thread([&servidor, &api, &cfg, fuente, fuente_img]() {
+        servidor->atenderHasta(g_salir, [&](const epp::Peticion& p) {
+          epp::Instantanea copia;
+          {
+            std::lock_guard<std::mutex> lock(api.m);
+            copia = api.s;
+          }
+          return epp::atender(p, copia, cfg, fuente, fuente_img);
+        });
+      });
+      std::printf("API: http://%s:%d/api/estado\n", cfg.api_direccion.c_str(), servidor->puerto());
+    } catch (const std::exception& e) {
+      std::printf("AVISO: sin API: %s\n", e.what());
+    }
+  }
+
   if (cfg.maquina.usar_pir && !comp)
     std::printf("AVISO: usar_pir = si pero no hay ESP32; se asume presencia siempre\n");
 
@@ -157,6 +263,9 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
   bool pir_presencia = false;
   int verdes = 0, rojos = 0, n = 0;
   double tCap = 0, tPre = 0, tInf = 0, tPost = 0, t_ultima_tel = -1e9;
+  double t_muestreo = -1e9, t_vista = -1e9;
+  int cuadros_ventana = 0;
+  double inf_ventana = 0, pre_ventana = 0;
   std::printf("Funcionando (Ctrl+C para terminar)\n\n");
 
   for (; !g_salir && (cuadros == 0 || n < cuadros); ++n) {
@@ -175,6 +284,44 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
     tInf += ms(t2, t3);
     tPost += ms(t3, t4);
     const double t = ms(inicio, t4) / 1000.0;
+    ++cuadros_ventana;
+    inf_ventana += ms(t2, t3);
+    pre_ventana += ms(t1, t2);
+
+    // -- vista en vivo: copiar el cuadro actual ~5 veces por segundo (0,9 MB por copia)
+    if (cfg.camara_en_vivo && t - t_vista >= 0.2) {
+      std::lock_guard<std::mutex> lock(vista.m);
+      vista.rgb = rgb;
+      vista.dets = dets;
+      ++vista.id;
+      t_vista = t;
+    }
+
+    // -- instrumentacion para la API, una vez por segundo (leer /proc fuera del candado)
+    if (t - t_muestreo >= 1.0) {
+      const auto textos = epp::leerTextosSistema();
+      epp::EstadisticasEnlace st_enlace;
+      proto_stats_t st_parser{};
+      bool enlace_ok = false;
+      if (comp) {
+        std::lock_guard<std::mutex> lock(comp->m);
+        st_enlace = comp->enlace.estadisticas();
+        st_parser = comp->enlace.estadisticasParser();
+        enlace_ok = comp->enlace.hayEnlace(t);
+      }
+      std::lock_guard<std::mutex> lock(api.m);
+      api.s.sistema.actualizar(t, textos);
+      const double ventana = t - t_muestreo;
+      if (t_muestreo > -1e8 && ventana > 0) api.s.fps = cuadros_ventana / ventana;
+      api.s.inferencia_ms = inf_ventana / cuadros_ventana;
+      api.s.preproceso_ms = pre_ventana / cuadros_ventana;
+      api.s.enlace = st_enlace;
+      api.s.parser = st_parser;
+      api.s.enlace_ok = enlace_ok;
+      cuadros_ventana = 0;
+      inf_ventana = pre_ventana = 0;
+      t_muestreo = t;
+    }
 
     // -- eventos del ESP32
     if (comp) {
@@ -188,6 +335,10 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
         switch (e.tipo) {
           case T::PIR:
             pir_presencia = e.presencia && e.pir_listo;
+            {
+              std::lock_guard<std::mutex> lock(api.m);
+              api.s.pir = pir_presencia;
+            }
             std::printf("[%6.1f s] PIR: %s%s\n", t, e.presencia ? "presencia" : "sin presencia",
                         e.pir_listo ? "" : " (calentando)");
             break;
@@ -212,6 +363,11 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
             break;
           }
           case T::TELEMETRIA:
+            {
+              std::lock_guard<std::mutex> lock(api.m);
+              api.s.telemetria = e.telemetria;
+              api.s.hay_telemetria = true;
+            }
             if (t - t_ultima_tel >= 60.0) {  // una linea por minuto basta en el registro
               const auto& m = e.telemetria;
               std::printf("[%6.1f s] ESP32: uptime %u s, heap libre %u B (min %u), tramas ok %u, err crc %u, "
@@ -234,6 +390,17 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
     // -- decision
     const bool pir = cfg.maquina.usar_pir && comp ? pir_presencia : true;
     const epp::Salida s = maquina.actualizar(t, pir, dets);
+    {
+      std::lock_guard<std::mutex> lock(api.m);
+      api.s.t_s = t;
+      api.s.cuadros = static_cast<unsigned long long>(n + 1);
+      if (s.cambio) {
+        api.s.estado = s.estado;
+        api.s.luz = s.luz;
+        api.s.rele = s.rele;
+        api.s.mensaje = s.mensaje;
+      }
+    }
     if (!s.cambio) continue;
     if (comp) {
       std::lock_guard<std::mutex> lock(comp->m);
@@ -249,17 +416,46 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
                   r.cuadros_con_persona, 100.0f * r.fraccion_casco, 100.0f * r.fraccion_chaleco);
       const bool verde = (s.estado == epp::Estado::RESULTADO_VERDE);
       (verde ? verdes : rojos)++;
+      epp::Evento ev;
+      ev.fecha = epp::fechaActualIso();
+      ev.hora_confiable = epp::relojConfiable();
+      ev.resultado = !r.decidido ? "no_verificado" : (verde ? "verde" : "rojo");
+      ev.falta_casco = r.falta_casco;
+      ev.falta_chaleco = r.falta_chaleco;
+      ev.fraccion_casco = r.fraccion_casco;
+      ev.fraccion_chaleco = r.fraccion_chaleco;
+      ev.cuadros = r.cuadros_con_persona;
+      if (reg.db) {
+        try {
+          std::lock_guard<std::mutex> lock(reg.m);
+          ev.id = reg.db->registrar(ev);
+        } catch (const std::exception& e) {
+          std::printf("AVISO: no se pudo registrar el evento: %s\n", e.what());
+        }
+      }
+      {
+        std::lock_guard<std::mutex> lock(api.m);
+        api.s.verdes = verdes;
+        api.s.rojos = rojos;
+        api.s.ultimo = ev;
+        api.s.hay_ultimo = true;
+      }
       if (cfg.guardar_evidencia) {
-        char nombre[64];
-        std::snprintf(nombre, sizeof(nombre), "/resultado_%02d_%s.ppm", verdes + rojos, verde ? "verde" : "rojo");
-        epp::guardarPpm(cfg.dir_evidencia + nombre, rgb, dets);
+        // JPEG (~50 KB) en vez de PPM (900 KB); se conservan solo las max_evidencias mas recientes
+        char nombre[96];
+        std::snprintf(nombre, sizeof(nombre), "/evento_%06lld_%s.jpg", ev.id ? ev.id : static_cast<long long>(verdes + rojos),
+                      ev.resultado.c_str());
+        if (!epp::guardarJpeg(cfg.dir_evidencia + nombre, rgb, dets, 85))
+          std::printf("AVISO: no se pudo guardar la evidencia en %s\n", cfg.dir_evidencia.c_str());
+        epp::podarArchivos(cfg.dir_evidencia, "evento_", cfg.max_evidencias);
       }
     }
     std::fflush(stdout);
   }
 
-  g_salir = true;  // detiene el hilo del enlace; sin latido, el ESP32 pasa a ROJO en 800 ms
+  g_salir = true;  // detiene los hilos; sin latido, el ESP32 pasa a ROJO en 800 ms
   if (hilo.joinable()) hilo.join();
+  if (hilo_api.joinable()) hilo_api.join();
   if (comp) {
     const auto& st = comp->enlace.estadisticas();
     const auto& ps = comp->enlace.estadisticasParser();

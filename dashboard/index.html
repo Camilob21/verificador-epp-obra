@@ -3,22 +3,84 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>EPP | Dashboard (plantilla)</title>
+  <title>Verificador de EPP</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <header>
+    <h1>Verificador de EPP</h1>
+    <span id="conexion" class="chip chip-mal">sin datos</span>
+  </header>
   <main>
-    <h1>Verificador EPP</h1>
-    <p class="warning">PROTOTIPO — Interfaz de demostración, sin API ni autorización real.</p>
-    <section aria-label="Estado de acceso">
-      <h2>Acceso <span id="estado">NO VERIFICADO</span></h2>
-      <p>El sistema no está conectado. Nunca interpretar esta pantalla como luz verde.</p>
+    <section id="panel-estado" aria-live="polite">
+      <div id="luz" class="luz luz-apagado" aria-hidden="true"></div>
+      <div>
+        <h2 id="estado">—</h2>
+        <p id="mensaje">Esperando datos del sistema…</p>
+        <p class="pequeno">Relé: <strong id="rele">—</strong> · ESP32: <strong id="esp32">—</strong> · PIR: <strong id="pir">—</strong></p>
+      </div>
     </section>
+
+    <section id="panel-vivo" hidden>
+      <h2>Cámara en vivo</h2>
+      <img id="vivo" alt="Imagen actual de la cámara con las detecciones dibujadas" width="640" height="480">
+      <p id="vivo-aviso" class="pequeno"></p>
+      <ul class="leyenda pequeno">
+        <li><i style="background:rgb(40,90,255)"></i>persona</li>
+        <li><i style="background:rgb(0,200,0)"></i>casco</li>
+        <li><i style="background:rgb(230,0,0)"></i>sin casco</li>
+        <li><i style="background:rgb(255,0,255)"></i>chaleco</li>
+        <li><i style="background:rgb(255,140,0)"></i>sin chaleco</li>
+        <li><i style="background:rgb(0,220,220)"></i>gafas</li>
+        <li><i style="background:rgb(255,120,180)"></i>sin gafas</li>
+        <li><i style="background:rgb(230,230,0)"></i>guantes</li>
+        <li><i style="background:rgb(150,75,0)"></i>sin guantes</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Resumen</h2>
+      <div class="cifras">
+        <div><span id="verdes">—</span><small>verdes</small></div>
+        <div><span id="rojos">—</span><small>rojos</small></div>
+        <div><span id="fps">—</span><small>cuadros/s</small></div>
+        <div><span id="inferencia">—</span><small>ms inferencia</small></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Últimos eventos</h2>
+      <p id="eventos-aviso" class="pequeno"></p>
+      <table>
+        <thead><tr><th>Fecha</th><th>Resultado</th><th>Falta</th><th>Casco</th><th>Chaleco</th></tr></thead>
+        <tbody id="eventos"></tbody>
+      </table>
+    </section>
+
     <section>
       <h2>Sistema</h2>
-      <p>CPU, memoria, perifericos, red y puertos: pendiente de implementar.</p>
+      <div class="cifras">
+        <div><span id="cpu">—</span><small>% CPU</small></div>
+        <div><span id="gpu">—</span><small>% GPU</small></div>
+        <div><span id="mem">—</span><small>% memoria</small></div>
+        <div><span id="uptime">—</span><small>encendido</small></div>
+      </div>
+      <h3>Temperaturas</h3>
+      <p id="temperaturas" class="pequeno">—</p>
+      <h3>Red</h3>
+      <table>
+        <thead><tr><th>Interfaz</th><th>Recibido</th><th>Enviado</th><th>Entrada</th><th>Salida</th></tr></thead>
+        <tbody id="red"></tbody>
+      </table>
+      <h3>Puertos en escucha</h3>
+      <p id="puertos" class="pequeno">—</p>
+      <h3>Enlace con el ESP32</h3>
+      <p id="enlace" class="pequeno">—</p>
+      <h3>Microcontrolador</h3>
+      <p id="mcu" class="pequeno">—</p>
     </section>
   </main>
+  <footer class="pequeno">Prototipo académico de apoyo; no es un sistema de seguridad certificado. Ante la duda, el sistema da rojo.</footer>
   <script src="app.js"></script>
 </body>
 </html>

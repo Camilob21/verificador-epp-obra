@@ -32,6 +32,16 @@ duracion_resultado_s = 5.0 # maximo 8: el ESP32 corta el verde a los 8 s
 
 # ---- Registro
 umbral_deteccion = 0.25    # umbral al decodificar (la decision usa los suyos)
-guardar_evidencia = si     # imagenes resultado_NN_*.ppm (pueden mostrar personas: no publicarlas)
+guardar_evidencia = si     # JPEG de cada decision: evento_<id>_<resultado>.jpg (muestran personas: no publicarlas)
+max_evidencias = 200       # se borran las mas viejas (~50 KB cada una); 0 = sin limite
 dir_evidencia = /var/lib/epp
 intervalo_telemetria_s = 5
+db = /var/lib/epp/eventos.db      # vacio = no registrar decisiones (no guarda imagenes ni identidad)
+
+# ---- API local para el dashboard (nginx la publica en el puerto 80; ver dashboard/nginx-epp.conf)
+api_direccion = 127.0.0.1         # no cambiar a 0.0.0.0: la API no tiene autenticacion
+api_puerto = 8081                 # 0 = sin API
+# Vista en vivo en el dashboard (/api/camara.jpg, ~5 imagenes/s). Muestra a las personas a cualquiera
+# de la red local: activarla solo para instalar, calibrar y demostrar.
+camara_en_vivo = si
+calidad_jpeg = 75

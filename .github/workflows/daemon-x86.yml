@@ -12,7 +12,7 @@ jobs:
       - name: Obtener fuentes
         uses: actions/checkout@v4
       - name: Instalar dependencias x86
-        run: sudo apt-get update && sudo apt-get install -y build-essential cmake libgtest-dev
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake libgtest-dev libsqlite3-dev
       - name: Configurar CMake
         working-directory: daemon
         run: cmake -S . -B build -DBUILD_TESTING=ON

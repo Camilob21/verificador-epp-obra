@@ -38,7 +38,7 @@ El daemon tiene tres partes (ver `daemon/CMakeLists.txt`):
 
 ### En un PC Linux (sin GPU): núcleo + pruebas
 
-Instalar compilador C/C++17, CMake **3.10 o superior** y Google Test del sistema (Debian/Ubuntu: `sudo apt install build-essential cmake libgtest-dev`; Fedora: `sudo dnf install gcc-c++ cmake gtest-devel`).
+Instalar compilador C/C++17, CMake **3.10 o superior** y Google Test del sistema (Debian/Ubuntu: `sudo apt install build-essential cmake libgtest-dev libsqlite3-dev`; Fedora: `sudo dnf install gcc-c++ cmake gtest-devel sqlite-devel`).
 
 ```bash
 cmake -S daemon -B daemon/build -DBUILD_TESTING=ON
@@ -50,7 +50,7 @@ En un PC es normal el mensaje `TensorRT/CUDA no encontrados: epp-daemon se omite
 
 ### En la Jetson Nano (JetPack 4.6.1)
 
-CMake 3.10 (el de Ubuntu 18.04) **no acepta `-S` ni `-B`**: se configura desde la carpeta `build`.
+Requiere `sudo apt install libsqlite3-dev`. CMake 3.10 (el de Ubuntu 18.04) **no acepta `-S` ni `-B`**: se configura desde la carpeta `build`.
 
 ```bash
 mkdir -p daemon/build
@@ -67,7 +67,7 @@ Debe aparecer `TensorRT y CUDA encontrados: se compila epp-daemon`. El motor se 
 ./epp-daemon -c ../../sistema/epp.conf.example -i imagen.ppm   # una imagen PPM 640x480
 ```
 
-Umbrales, tiempos y dispositivos se leen de **`epp.conf`** (ejemplo comentado en `sistema/epp.conf.example`): se cambian sin recompilar. Con `uart =` vacío funciona sin ESP32 y las luces solo aparecen en la consola. Para dejarlo como servicio que arranca solo, ver `sistema/README.md`.
+El daemon guarda cada decisión en SQLite (`db` en `epp.conf`) y expone una API local de solo lectura en `127.0.0.1:8081` (`/api/estado`, `/api/eventos`, `/api/sistema`, `/api/config`); el dashboard (`dashboard/`, servido por nginx) la consulta. Umbrales, tiempos y dispositivos se leen de **`epp.conf`** (ejemplo comentado en `sistema/epp.conf.example`): se cambian sin recompilar. Con `uart =` vacío funciona sin ESP32 y las luces solo aparecen en la consola. Para dejarlo como servicio que arranca solo, ver `sistema/README.md`.
 
 Cada decisión guarda una imagen `resultado_NN_<verde|rojo>.ppm`, que puede mostrar personas y por eso está excluida en `.gitignore`.
 
