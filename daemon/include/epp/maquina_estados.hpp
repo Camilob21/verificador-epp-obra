@@ -29,7 +29,7 @@ struct ConfigMaquina {
   int cuadros_en_posicion = 5;         // cuadros seguidos en posicion para empezar a verificar
   double ventana_verificacion_s = 1.5; // tiempo minimo acumulando cuadros
   double espera_max_verificacion_s = 4.0;
-  double espera_max_persona_s = 15.0;  // solo con PIR
+  double espera_max_persona_s = 20.0;  // solo con sensor: tiempo para ir de la caja a la marca
   double duracion_resultado_s = 5.0;
 };
 

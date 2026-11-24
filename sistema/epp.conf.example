@@ -21,13 +21,14 @@ exigir_casco = si
 exigir_chaleco = si
 
 # ---- Flujo del punto de control
-usar_pir = no              # si = esperar al PIR del ESP32 antes de buscar a la persona
+usar_pir = si              # si = la verificacion empieza cuando la persona acerca la mano al
+                           # HC-SR04 (boton sin contacto); no = siempre buscando persona
 alto_minimo = 0.45         # la persona debe ocupar este % del alto de la imagen
 margen_centro = 0.30       # y estar centrada (+- este % del ancho)
 cuadros_en_posicion = 5
 ventana_verificacion_s = 1.5
 espera_max_verificacion_s = 4.0
-espera_max_persona_s = 15.0
+espera_max_persona_s = 20.0  # tiempo para ir de la caja a la marca tras acercar la mano
 duracion_resultado_s = 5.0 # maximo 8: el ESP32 corta el verde a los 8 s
 
 # ---- Registro

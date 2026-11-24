@@ -95,7 +95,7 @@ Los contactos del relé (COM, NO, NC) se usan para la carga, por ejemplo un LED 
 
 ### 2.5 Sensor de presencia: ultrasónico HC-SR04 (opción por defecto)
 
-Se cambió el PIR por un HC-SR04 porque el PIR necesita calibrarse a mano (sensibilidad y tiempo) y solo dice "hay o no hay"; el ultrasónico **mide la distancia** (variable física continua) y la presencia se define por software: alguien entre 20 cm y 1 m (ajustable en `menuconfig` → *Entradas*).
+Se cambió el PIR por un HC-SR04 porque el PIR necesita calibrarse a mano (sensibilidad y tiempo) y solo dice "hay o no hay"; el ultrasónico **mide la distancia** (variable física continua) y funciona como **botón sin contacto**: la persona acerca la mano a la caja (5–40 cm, ajustable en `menuconfig` → *Entradas*) para iniciar la verificación y luego se para en la marca.
 
 **Ubicación: junto a la marca del piso, no junto a la cámara.** La ropa absorbe el ultrasonido. Medición del 24-nov, persona de frente, torso como blanco, 16 disparos por segundo:
 
@@ -106,7 +106,7 @@ Se cambió el PIR por un HC-SR04 porque el PIR necesita calibrarse a mano (sensi
 | 1,2–1,35 m | 2–3 de 16 |
 | 1,5–1,7 m | 0–3 de 16 |
 
-Por eso el sensor va en un soporte al lado de la marca, a la altura del pecho, apuntando al torso a unos 50–80 cm; la cámara sigue a 1,5–2 m.
+Por eso no se usa para detectar el cuerpo a la distancia de la cámara (1,5–2 m), sino la mano de cerca, donde el eco es firme (medido: 8–35 cm con lecturas estables). Va en la misma caja de la cámara, con un cartel "Acerque la mano para comenzar".
 
 ```
  HC-SR04 VCC  ← 5V (J1-14)
@@ -118,7 +118,7 @@ Por eso el sensor va en un soporte al lado de la marca, a la altura del pecho, a
 
 > ⚠️ **ECHO entrega 5 V y ningún pin del ESP32-C6 los tolera: el divisor es obligatorio.** Con 1 kΩ arriba y 2 kΩ abajo, 5 V × 2/3 ≈ 3,3 V. Sirve cualquier par con relación 1:2 (2,2 kΩ / 4,7 kΩ, 10 kΩ / 20 kΩ). **No use dos resistencias iguales:** darían 2,5 V, justo en el límite de lo que el ESP32 reconoce como "alto". Antes de conectar GPIO18, mida con el multímetro el punto medio del divisor con un objeto a 10 cm del sensor: debe dar pulsos por debajo de 3,6 V.
 
-El firmware dispara cada 60 ms, mide el ancho del eco con una interrupción, toma la mediana de las últimas 10 mediciones (bastan 2 válidas) y aplica histéresis: 300 ms en rango para "presencia" y 1,5 s fuera de rango para "ausencia". La presencia viaja en el mismo `EVENTO_PIR` de siempre y la distancia en `EVENTO_DISTANCIA` (0x85), que el dashboard muestra en metros.
+El firmware dispara cada 60 ms, mide el ancho del eco con una interrupción, toma la mediana de las últimas 10 mediciones (bastan 2 válidas) y aplica histéresis: 200 ms en rango para "presencia" y 1,5 s fuera de rango para "ausencia". El daemon toma la presencia como disparo: pasa a "esperando persona" y espera hasta 20 s a que se pare en la marca, aunque la mano ya se haya retirado. La presencia viaja en el mismo `EVENTO_PIR` de siempre y la distancia en `EVENTO_DISTANCIA` (0x85), que el dashboard muestra en metros.
 
 ### 2.5 bis Sensor PIR (HC-SR501, opción alternativa)
 

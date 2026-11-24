@@ -128,3 +128,40 @@ TEST(Maquina, ElReleSoloSeActivaEnVerde) {
     if (s.estado != Estado::RESULTADO_VERDE) EXPECT_FALSE(s.rele);
   }
 }
+
+TEST(Maquina, ConSensorPideAcercarLaMano) {
+  ConfigMaquina cm;
+  cm.usar_pir = true;
+  MaquinaEstados m(cm);
+  const Salida s = m.actualizar(0.0, false, {});
+  EXPECT_EQ(s.estado, Estado::REPOSO);
+  EXPECT_NE(s.mensaje.find("Acerque la mano"), std::string::npos);
+}
+
+TEST(Maquina, LaManoEsUnDisparoQueEsperaALaPersona) {
+  // HC-SR04 como boton sin contacto: la mano esta 0,3 s y se retira; la persona tarda ~4 s en
+  // llegar a la marca. La espera no debe cancelarse al retirar la mano.
+  ConfigMaquina cm;
+  cm.usar_pir = true;
+  MaquinaEstados m(cm);
+  double t = 0;
+  Salida s = correr(m, t, 0.3, {}, /*pir=*/true);
+  EXPECT_EQ(s.estado, Estado::ESPERANDO_PERSONA);
+  s = correr(m, t, 4.0, {}, /*pir=*/false);  // camina hacia la marca, sin presencia en el sensor
+  EXPECT_EQ(s.estado, Estado::ESPERANDO_PERSONA);
+  s = correr(m, t, 0.5, {PERSONA}, /*pir=*/false);  // ya en la marca
+  EXPECT_EQ(s.estado, Estado::VERIFICANDO);
+}
+
+TEST(Maquina, SiNadieLlegaALaMarcaVuelveAReposo) {
+  ConfigMaquina cm;
+  cm.usar_pir = true;
+  MaquinaEstados m(cm);
+  double t = 0;
+  correr(m, t, 0.3, {}, /*pir=*/true);
+  Salida s = correr(m, t, 19.0, {}, /*pir=*/false);
+  EXPECT_EQ(s.estado, Estado::ESPERANDO_PERSONA);  // aun dentro de los 20 s
+  s = correr(m, t, 2.0, {}, /*pir=*/false);
+  EXPECT_EQ(s.estado, Estado::REPOSO);
+  EXPECT_FALSE(s.rele);
+}

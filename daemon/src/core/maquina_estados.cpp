@@ -65,7 +65,8 @@ Salida MaquinaEstados::actualizar(double t, bool pir, const Detecciones& dets) {
         entrar(Estado::ESPERANDO_PERSONA, t);
         ultimo_mensaje_ = "Parese en la marca, de frente a la camara";
       } else {
-        ultimo_mensaje_ = "";
+        // Con sensor de presencia (HC-SR04 como boton sin contacto) se espera la mano
+        ultimo_mensaje_ = "Acerque la mano al sensor para comenzar";
       }
       break;
 
