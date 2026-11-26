@@ -1,0 +1,7 @@
+# Factory reset del verificador de EPP. Lo lanza epp-fabrica.path; a mano: sudo epp-fabrica
+[Unit]
+Description=Factory reset del verificador de EPP (borrar datos y volver a la puesta en marcha)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/epp-fabrica

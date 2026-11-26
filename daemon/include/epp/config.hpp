@@ -32,6 +32,12 @@ struct Config {
   std::string db;                     // base SQLite de eventos; vacio = sin registro
   std::string api_direccion = "127.0.0.1";  // solo local: el acceso desde la red pasa por nginx
   int api_puerto = 8081;              // 0 = sin API
+  // Puesta en marcha (bring-up): mientras este archivo no exista, el equipo no controla el acceso
+  // y muestra el asistente. Vacio = sin asistente (equipo de laboratorio).
+  std::string marca_puesta_en_marcha;
+  // Factory reset: el daemon (usuario epp) crea este archivo al recibir el boton del ESP32 y
+  // epp-fabrica.path (root) hace el borrado. Vacio = el boton solo se registra.
+  std::string solicitud_fabrica;
   ConfigDecision decision;
   ConfigMaquina maquina;
 };

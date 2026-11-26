@@ -48,3 +48,11 @@ api_puerto = 8081                 # 0 = sin API
 # de la red local: activarla solo para instalar, calibrar y demostrar.
 camara_en_vivo = si
 calidad_jpeg = 75
+
+# ---- Puesta en marcha (bring-up) y factory reset
+# Mientras este archivo no exista el equipo NO controla el acceso: el dashboard muestra el asistente
+# de puesta en marcha y se confirma con la mano frente al sensor 3 s. El factory reset lo borra.
+marca_puesta_en_marcha = /var/lib/epp/puesta_en_marcha.ok
+# El boton del ESP32 (5 s) hace que el daemon cree este archivo; epp-fabrica.path lo vigila y
+# ejecuta /usr/local/sbin/epp-fabrica. No cambiar la ruta sin cambiar tambien epp-fabrica.path.
+solicitud_fabrica = /var/lib/epp/solicitud_fabrica

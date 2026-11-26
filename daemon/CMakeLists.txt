@@ -31,6 +31,7 @@ add_library(epp_core STATIC
     src/core/http.cpp
     src/core/api.cpp
     src/core/jpeg.cpp
+    src/core/puesta_en_marcha.cpp
 )
 target_include_directories(epp_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(epp_core PUBLIC protocolo)
@@ -92,7 +93,8 @@ if(BUILD_TESTING)
       tests/test_api.cpp
       tests/test_registro.cpp
       tests/test_servidor_http.cpp
-      tests/test_jpeg.cpp)
+      tests/test_jpeg.cpp
+      tests/test_puesta_en_marcha.cpp)
   target_include_directories(epp_tests PRIVATE ${GTEST_INCLUDE_DIRS})
   target_link_libraries(epp_tests PRIVATE epp_plataforma epp_core ${GTEST_LIBRARIES} Threads::Threads)
   add_test(NAME epp_tests COMMAND epp_tests)

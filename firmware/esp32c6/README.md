@@ -28,7 +28,7 @@ Los pines se verificaron contra la [guía de usuario oficial de la ESP32-C6-DevK
 | UART1 RX ← Jetson pin 8 (TX) | 4 | J1-3 | strapping (MTMS); funciona porque la Jetson deja TX en alto. Antes era GPIO11, sin soldar en nuestra placa |
 
 **Pines evitados y por qué:**
-- GPIO4, 5, 8, 9 y 15 son de arranque (*strapping*). GPIO9 = botón BOOT; GPIO8 = LED RGB de la placa.
+- GPIO4, 5, 8, 9 y 15 son de arranque (*strapping*). GPIO9 = botón BOOT; GPIO8 = LED RGB de la placa. Excepción: el RX de la UART quedó en GPIO4 porque GPIO11 estaba sin soldar; funciona porque la línea TX de la Jetson está en alto en reposo. Si la placa no arranca con la Jetson conectada, desconectar ese cable al encender.
 - GPIO12 y 13 son el USB nativo (D− y D+).
 - GPIO16 y 17 son la UART0 de la consola, cableada al puente USB-UART.
 - GPIO0 y 1 son las entradas del cristal de 32 kHz (se dejan libres por precaución).

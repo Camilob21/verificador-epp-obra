@@ -38,6 +38,16 @@ th, td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid #e5e7
 .sup-verde .cronometro, .sup-rojo .cronometro { font-size: clamp(2.2rem, 9vw, 4.5rem); }
 .leyenda { list-style: none; padding: 0; margin: .6rem 0 0; display: flex; flex-wrap: wrap; gap: .4rem 1rem; }
 .leyenda i { display: inline-block; width: .9rem; height: .9rem; border-radius: .2rem; margin-right: .3rem; vertical-align: -2px; }
+.aviso-fuerte { background: #fef3c7; border: 2px solid #f59e0b; }
+.texto-aviso { color: #b45309; font-weight: 600; }
+#panel-puesta { border: 2px solid var(--amarillo); }
+.lista-puesta { list-style: none; padding: 0; margin: .6rem 0; }
+.lista-puesta li { padding: .35rem 0; color: #7f1d1d; }
+.lista-puesta li.ok { color: #14532d; }
+.lista-puesta li.informativo:not(.ok) { color: #92400e; }
+.lista-puesta .marca { display: inline-block; width: 1.6rem; font-weight: 700; }
+.barra { height: 1.1rem; background: #e5e7eb; border-radius: .6rem; overflow: hidden; }
+.barra div { height: 100%; width: 0; background: var(--verde); transition: width .25s linear; }
 .chip { padding: .25rem .7rem; border-radius: 1rem; font-size: .85rem; }
 .chip-bien { background: #dcfce7; color: #14532d; }
 .chip-mal { background: #fee2e2; color: #7f1d1d; }

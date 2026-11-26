@@ -28,6 +28,19 @@ TEST(Config, AplicaValoresValidosYComentarios) {
   EXPECT_TRUE(c.maquina.usar_pir);
 }
 
+TEST(Config, PuestaEnMarchaYFactoryReset) {
+  Config c;
+  EXPECT_TRUE(c.marca_puesta_en_marcha.empty());  // por defecto sin asistente
+  EXPECT_TRUE(c.solicitud_fabrica.empty());
+  const auto avisos = aplicarTexto(c,
+                                   "marca_puesta_en_marcha = /var/lib/epp/puesta_en_marcha.ok\n"
+                                   "solicitud_fabrica = /var/lib/epp/solicitud_fabrica\n");
+  EXPECT_TRUE(avisos.empty());
+  EXPECT_EQ(c.marca_puesta_en_marcha, "/var/lib/epp/puesta_en_marcha.ok");
+  EXPECT_EQ(c.solicitud_fabrica, "/var/lib/epp/solicitud_fabrica");
+  EXPECT_NE(describirConfig(c).find("puesta en marcha: /var/lib/epp/puesta_en_marcha.ok"), std::string::npos);
+}
+
 TEST(Config, ValorInvalidoConservaElPorDefectoYAvisa) {
   Config c;
   const auto avisos = aplicarTexto(c, "umbral_prenda = 1.7\ncuadros_minimos = ocho\nusar_pir = quizas\n");

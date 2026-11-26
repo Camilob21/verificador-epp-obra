@@ -19,6 +19,7 @@
 #include "epp/http.hpp"
 #include "epp/instrumentacion.hpp"
 #include "epp/maquina_estados.hpp"
+#include "epp/puesta_en_marcha.hpp"
 
 namespace epp {
 
@@ -91,6 +92,12 @@ struct Instantanea {
   MuestreadorSistema sistema;
   bool registro_activo = false;
   bool camara_en_vivo = false;
+  // puesta en marcha, reloj y factory reset
+  bool en_puesta_en_marcha = false;
+  EstadoPuesta puesta;
+  std::string hora;               // hora local del equipo (ISO 8601)
+  bool hora_sincronizada = false; // la hora llego por la red en este arranque
+  bool restaurando = false;       // se pidio el factory reset; el equipo se reinicia en segundos
 };
 
 using FuenteEventos = std::function<std::vector<Evento>(int limite)>;

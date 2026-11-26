@@ -36,6 +36,26 @@ TEST(Json, EscapaComillasYControl) {
   EXPECT_EQ(jsonNumero(1.234, 1), "1.2");
 }
 
+TEST(Api, PuestaEnMarchaHoraYRestauracion) {
+  Instantanea s;
+  s.hora = "2026-11-26T15:00:00-05:00";
+  auto j = jsonEstado(s);
+  EXPECT_NE(j.find("\"puesta_en_marcha\":null"), std::string::npos);  // en operacion normal
+  EXPECT_NE(j.find("\"hora\":\"2026-11-26T15:00:00-05:00\""), std::string::npos);
+  EXPECT_NE(j.find("\"hora_sincronizada\":false"), std::string::npos);
+  EXPECT_NE(j.find("\"restaurando\":false"), std::string::npos);
+  s.en_puesta_en_marcha = true;
+  s.puesta.camara = s.puesta.esp32 = true;
+  s.puesta.confirmacion_s = 1.5;
+  s.puesta.confirmacion_total_s = 3;
+  s.restaurando = true;
+  j = jsonEstado(s);
+  EXPECT_NE(j.find("\"puesta_en_marcha\":{\"camara\":true,\"esp32\":true,\"sensor\":false,\"hora\":false,"
+                   "\"confirmacion_s\":1.5,\"confirmacion_total_s\":3.0,\"completa\":false}"),
+            std::string::npos);
+  EXPECT_NE(j.find("\"restaurando\":true"), std::string::npos);
+}
+
 TEST(Api, EstadoContieneLoPrincipal) {
   Instantanea s;
   s.estado = Estado::RESULTADO_ROJO;

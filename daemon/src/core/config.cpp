@@ -95,6 +95,8 @@ const std::map<std::string, Aplicador>& tabla() {
       {"uart", texto(&Config::uart)},
       {"dir_evidencia", texto(&Config::dir_evidencia)},
       {"db", texto(&Config::db)},
+      {"marca_puesta_en_marcha", texto(&Config::marca_puesta_en_marcha)},
+      {"solicitud_fabrica", texto(&Config::solicitud_fabrica)},
       {"api_direccion",
        [](Config& c, const std::string& v) -> std::string {
          // solo IPv4 en forma de cuatro numeros; la validacion fina la hace inet_pton al abrir
@@ -274,6 +276,8 @@ std::string describirConfig(const Config& c) {
     << (c.api_puerto ? c.api_direccion + ":" + std::to_string(c.api_puerto) : std::string("(sin API)"))
     << " camara_en_vivo=" << (c.camara_en_vivo ? "si" : "no") << " evidencias=" << (c.guardar_evidencia ? "si" : "no")
     << " (max " << c.max_evidencias << ")\n"
+    << "puesta en marcha: " << (c.marca_puesta_en_marcha.empty() ? "(desactivada)" : c.marca_puesta_en_marcha)
+    << " factory reset: " << (c.solicitud_fabrica.empty() ? "(solo se registra)" : c.solicitud_fabrica) << "\n"
     << "decision: persona>=" << c.decision.umbral_persona << " prenda>=" << c.decision.umbral_prenda
     << " fraccion>=" << c.decision.fraccion_minima << " cuadros>=" << c.decision.cuadros_minimos
     << " casco=" << (c.decision.exigir_casco ? "si" : "no") << " chaleco=" << (c.decision.exigir_chaleco ? "si" : "no")

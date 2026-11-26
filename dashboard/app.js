@@ -42,9 +42,33 @@ function num(v, decimales = 0, sufijo = '') {
 
 let vivoActivo = false;  // el bucle de imagenes corre solo mientras el panel esta visible
 
+function marcar(id, ok) {
+  const li = $(id);
+  li.classList.toggle('ok', Boolean(ok));
+  li.querySelector('.marca').textContent = ok ? '✔' : '✘';
+}
+
+function mostrarPuesta(e) {
+  const p = e.puesta_en_marcha;
+  $('panel-restaurando').hidden = !e.restaurando;
+  $('panel-puesta').hidden = !p;
+  if (!p) return;
+  marcar('pm-camara', p.camara);
+  marcar('pm-esp32', p.esp32);
+  marcar('pm-sensor', p.sensor);
+  marcar('pm-hora', p.hora);
+  texto('pm-hora-texto', p.hora ? '' : '(opcional: sin internet las fechas de los eventos no son confiables)');
+  const total = typeof p.confirmacion_total_s === 'number' && p.confirmacion_total_s > 0 ? p.confirmacion_total_s : 3;
+  texto('pm-total', num(total));
+  const pct = Math.min(100, Math.max(0, 100 * (p.confirmacion_s || 0) / total));
+  $('pm-barra').style.width = `${pct}%`;
+  $('pm-barra').parentElement.setAttribute('aria-valuenow', pct.toFixed(0));
+}
+
 function mostrarVivo(e) {
   // La camara se muestra en cuanto el sensor detecta a alguien (todo estado distinto de REPOSO)
-  const visible = Boolean(e.camara_en_vivo) && e.estado !== 'REPOSO';
+  // y durante la puesta en marcha, para poder acomodarla
+  const visible = Boolean(e.camara_en_vivo) && (e.estado !== 'REPOSO' || Boolean(e.puesta_en_marcha));
   $('panel-vivo').hidden = !visible;
   if (visible && !vivoActivo) {
     vivoActivo = true;
@@ -92,8 +116,14 @@ async function actualizarEstado() {
     const e = await pedir('/api/estado');
     $('conexion').textContent = 'en línea';
     $('conexion').className = 'chip chip-bien';
-    texto('estado', typeof e.cuenta_regresiva === 'number'
-      ? `Acomódate: ${Math.ceil(e.cuenta_regresiva)} s` : (NOMBRES_ESTADO[e.estado] || e.estado));
+    let titulo = NOMBRES_ESTADO[e.estado] || e.estado;
+    if (e.restaurando) titulo = 'Restaurando';
+    else if (e.puesta_en_marcha) titulo = 'Puesta en marcha';
+    else if (typeof e.cuenta_regresiva === 'number') titulo = `Acomódate: ${Math.ceil(e.cuenta_regresiva)} s`;
+    texto('estado', titulo);
+    texto('hora', e.hora ? e.hora.replace('T', ' ').slice(0, 19) : '—');
+    texto('hora-aviso', e.hora && e.hora_sincronizada === false ? '(sin sincronizar por internet)' : '');
+    mostrarPuesta(e);
     texto('mensaje', e.mensaje || '—');
     $('luz').className = `luz ${claseLuz(e.luz || '')}`;
     texto('rele', e.rele ? 'activado' : 'apagado');

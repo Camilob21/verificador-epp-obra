@@ -79,7 +79,18 @@ std::string jsonEstado(const Instantanea& s) {
     << jsonBool(s.hay_uart) << ",\"enlace\":" << jsonBool(s.enlace_ok) << ",\"pir\":" << jsonBool(s.pir)
     << ",\"distancia_m\":" << (s.hay_distancia && s.distancia_valida ? jsonNumero(s.distancia_m, 3) : "null") << "}"
     << ",\"registro\":" << jsonBool(s.registro_activo) << ",\"camara_en_vivo\":" << jsonBool(s.camara_en_vivo)
-    << "}";
+    << ",\"hora\":" << jsonTexto(s.hora) << ",\"hora_sincronizada\":" << jsonBool(s.hora_sincronizada)
+    << ",\"restaurando\":" << jsonBool(s.restaurando) << ",\"puesta_en_marcha\":";
+  if (!s.en_puesta_en_marcha) {
+    o << "null";
+  } else {
+    const auto& p = s.puesta;
+    o << "{\"camara\":" << jsonBool(p.camara) << ",\"esp32\":" << jsonBool(p.esp32) << ",\"sensor\":"
+      << jsonBool(p.sensor) << ",\"hora\":" << jsonBool(p.hora) << ",\"confirmacion_s\":"
+      << jsonNumero(p.confirmacion_s, 1) << ",\"confirmacion_total_s\":" << jsonNumero(p.confirmacion_total_s, 1)
+      << ",\"completa\":" << jsonBool(p.completa) << "}";
+  }
+  o << "}";
   return o.str();
 }
 
