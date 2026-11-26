@@ -401,6 +401,7 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
       std::lock_guard<std::mutex> lock(api.m);
       api.s.t_s = t;
       api.s.cuadros = static_cast<unsigned long long>(n + 1);
+      api.s.cuenta_regresiva = s.segundos_restantes;
       if (s.cambio) {
         api.s.estado = s.estado;
         api.s.luz = s.luz;

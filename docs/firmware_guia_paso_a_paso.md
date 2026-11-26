@@ -306,7 +306,7 @@ Escriba `v` y espere 5 s.
 ```bash
 idf.py build && idf.py -p /dev/ttyUSB0 flash monitor
 ```
-**Esperado:** igual que en 1.3, pero **sin** la línea `MODO PRUEBA` y con `I (...) enlace: UART1 115200 8N1, TX=GPIO10 RX=GPIO11`.
+**Esperado:** igual que en 1.3, pero **sin** la línea `MODO PRUEBA` y con `I (...) enlace: UART1 115200 8N1, TX=GPIO10 RX=GPIO4`.
 
 ### 6.2 En la Jetson (lo hace su compañero, comando por comando)
 ```bash
@@ -322,7 +322,7 @@ ls -l /dev/ttyTHS1
 **Criterio:** el dispositivo existe. *Que corresponda a los pines 8 y 10 en JetPack 4.6.1 lo indica NVIDIA en sus foros y en JetsonHacks, pero no lo verifiqué en su Jetson.*
 
 ### 6.3 Cableado
-Con **todo apagado**: GPIO10 → pin 10, GPIO11 ← pin 8, GND ↔ pin 6 (README, sección 2.6). Revise dos veces la numeración del conector J41: el pin 1 está marcado en la placa.
+Con **todo apagado**: GPIO10 → pin 10, GPIO4 ← pin 8, GND ↔ pin 6 (README, sección 2.6). Revise dos veces la numeración del conector J41: el pin 1 está marcado en la placa.
 
 ### 6.4 Primera prueba: el simulador corriendo en la Jetson
 Copie `tools/sim_jetson.py` a la Jetson y, si hace falta, instale pyserial con `sudo apt install python3-serial`. Luego:

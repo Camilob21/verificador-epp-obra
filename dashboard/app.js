@@ -34,6 +34,45 @@ function duracion(s) {
 
 function texto(id, valor) { $(id).textContent = valor; }
 
+// Formatea un numero; si el campo no viene (p. ej. un daemon mas viejo que el dashboard) muestra "—"
+// en vez de lanzar un error que dejaria todo el panel en "Sin datos".
+function num(v, decimales = 0, sufijo = '') {
+  return typeof v === 'number' && Number.isFinite(v) ? `${v.toFixed(decimales)}${sufijo}` : '—';
+}
+
+let vivoActivo = false;  // el bucle de imagenes corre solo mientras el panel esta visible
+
+function mostrarVivo(e) {
+  // La camara se muestra en cuanto el sensor detecta a alguien (todo estado distinto de REPOSO)
+  const visible = Boolean(e.camara_en_vivo) && e.estado !== 'REPOSO';
+  $('panel-vivo').hidden = !visible;
+  if (visible && !vivoActivo) {
+    vivoActivo = true;
+    refrescarVivo();
+  }
+  vivoActivo = visible;
+
+  const sup = $('superpuesto');
+  if (typeof e.cuenta_regresiva === 'number') {
+    sup.hidden = false;
+    sup.className = 'superpuesto';
+    texto('cronometro', Math.ceil(e.cuenta_regresiva));
+    texto('indicacion', 'Colócate en una posición donde se te vea el torso y la cabeza');
+  } else if (e.estado === 'VERIFICANDO') {
+    sup.hidden = false;
+    sup.className = 'superpuesto';
+    texto('cronometro', '');
+    texto('indicacion', 'Verificando… quédate quieto');
+  } else if (e.estado === 'RESULTADO_VERDE' || e.estado === 'RESULTADO_ROJO') {
+    sup.hidden = false;
+    sup.className = `superpuesto ${e.estado === 'RESULTADO_VERDE' ? 'sup-verde' : 'sup-rojo'}`;
+    texto('cronometro', e.estado === 'RESULTADO_VERDE' ? 'PUEDE PASAR' : 'NO CUMPLE');
+    texto('indicacion', e.mensaje || '');
+  } else {
+    sup.hidden = true;
+  }
+}
+
 function celda(fila, valor, clase) {
   const td = document.createElement('td');
   td.textContent = valor;
@@ -53,21 +92,20 @@ async function actualizarEstado() {
     const e = await pedir('/api/estado');
     $('conexion').textContent = 'en línea';
     $('conexion').className = 'chip chip-bien';
-    texto('estado', NOMBRES_ESTADO[e.estado] || e.estado);
+    texto('estado', typeof e.cuenta_regresiva === 'number'
+      ? `Acomódate: ${Math.ceil(e.cuenta_regresiva)} s` : (NOMBRES_ESTADO[e.estado] || e.estado));
     texto('mensaje', e.mensaje || '—');
-    $('luz').className = `luz ${claseLuz(e.luz)}`;
+    $('luz').className = `luz ${claseLuz(e.luz || '')}`;
     texto('rele', e.rele ? 'activado' : 'apagado');
-    texto('esp32', !e.esp32.configurado ? 'no configurado' : (e.esp32.enlace ? 'enlazado' : 'SIN ENLACE'));
-    texto('pir', e.esp32.pir ? 'sí' : 'no');
-    texto('distancia', e.esp32.distancia_m === null ? '—' : `${e.esp32.distancia_m.toFixed(2)} m`);
-    texto('verdes', e.verdes);
-    texto('rojos', e.rojos);
-    texto('fps', e.fps.toFixed(1));
-    texto('inferencia', e.inferencia_ms.toFixed(0));
-    if (e.camara_en_vivo && $('panel-vivo').hidden) {
-      $('panel-vivo').hidden = false;
-      refrescarVivo();
-    }
+    const esp = e.esp32 || {};
+    texto('esp32', !esp.configurado ? 'no configurado' : (esp.enlace ? 'enlazado' : 'SIN ENLACE'));
+    texto('pir', esp.pir ? 'sí' : 'no');
+    texto('distancia', num(esp.distancia_m, 2, ' m'));
+    texto('verdes', num(e.verdes));
+    texto('rojos', num(e.rojos));
+    texto('fps', num(e.fps, 1));
+    texto('inferencia', num(e.inferencia_ms));
+    mostrarVivo(e);
   } catch (err) {
     $('conexion').textContent = 'sin conexión con el daemon';
     $('conexion').className = 'chip chip-mal';
@@ -101,15 +139,15 @@ async function actualizarEventos() {
 async function actualizarSistema() {
   try {
     const s = await pedir('/api/sistema');
-    texto('cpu', s.cpu_pct === null ? '—' : s.cpu_pct.toFixed(0));
-    texto('gpu', s.gpu_pct === null ? '—' : s.gpu_pct.toFixed(0));
-    const m = s.memoria;
+    texto('cpu', num(s.cpu_pct));
+    texto('gpu', num(s.gpu_pct));
+    const m = s.memoria || {};
     texto('mem', m.total_kb ? (100 * (1 - m.disponible_kb / m.total_kb)).toFixed(0) : '—');
     texto('uptime', duracion(s.uptime_s));
-    texto('temperaturas', s.temperaturas.map((t) => `${t.zona}: ${t.c.toFixed(1)} °C`).join(' · ') || '—');
+    texto('temperaturas', (s.temperaturas || []).map((t) => `${t.zona}: ${num(t.c, 1)} °C`).join(' · ') || '—');
     const red = $('red');
     red.replaceChildren();
-    for (const r of s.red) {
+    for (const r of s.red || []) {
       const tr = document.createElement('tr');
       celda(tr, r.interfaz);
       celda(tr, bytes(r.rx_bytes));
@@ -137,6 +175,7 @@ async function actualizarSistema() {
 // Vista en vivo: pide la siguiente imagen solo cuando terminó de cargar la anterior (~5 por segundo),
 // así una red lenta no acumula peticiones.
 function refrescarVivo() {
+  if (!vivoActivo) return;  // panel oculto: no se piden imagenes
   const img = $('vivo');
   img.onload = () => { texto('vivo-aviso', ''); setTimeout(refrescarVivo, 200); };
   img.onerror = () => { texto('vivo-aviso', 'Sin imagen de la cámara en este momento.'); setTimeout(refrescarVivo, 1000); };
@@ -146,6 +185,6 @@ function refrescarVivo() {
 actualizarEstado();
 actualizarEventos();
 actualizarSistema();
-setInterval(actualizarEstado, 500);
+setInterval(actualizarEstado, 300);  // 300 ms: el cronometro avanza sin saltos visibles
 setInterval(actualizarEventos, 3000);
 setInterval(actualizarSistema, 2000);

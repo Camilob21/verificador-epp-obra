@@ -204,6 +204,13 @@ const std::map<std::string, Aplicador>& tabla() {
       {"ventana_verificacion_s", segundos(&ConfigMaquina::ventana_verificacion_s, 0.2, 30.0)},
       {"espera_max_verificacion_s", segundos(&ConfigMaquina::espera_max_verificacion_s, 0.5, 60.0)},
       {"espera_max_persona_s", segundos(&ConfigMaquina::espera_max_persona_s, 1.0, 600.0)},
+      {"cuenta_regresiva_s",
+       [](Config& c, const std::string& v) -> std::string {
+         double d;
+         if (!aDouble(v, d) || d < 0.0 || d > 60.0) return "debe ser un tiempo entre 0 y 60 s (0 = criterio de encuadre)";
+         c.maquina.cuenta_regresiva_s = d;
+         return "";
+       }},
       // El ESP32 corta el verde a los 8 s pase lo que pase; por eso el maximo es 8.
       {"duracion_resultado_s", segundos(&ConfigMaquina::duracion_resultado_s, 1.0, 8.0)},
   };
@@ -274,7 +281,8 @@ std::string describirConfig(const Config& c) {
     << "maquina: pir=" << (c.maquina.usar_pir ? "si" : "no") << " alto>=" << c.maquina.alto_minimo
     << " margen=" << c.maquina.margen_centro << " ventana=" << c.maquina.ventana_verificacion_s
     << "s max_verif=" << c.maquina.espera_max_verificacion_s << "s max_persona=" << c.maquina.espera_max_persona_s
-    << "s resultado=" << c.maquina.duracion_resultado_s << "s";
+    << "s resultado=" << c.maquina.duracion_resultado_s << "s cuenta_regresiva=" << c.maquina.cuenta_regresiva_s
+    << "s";
   return o.str();
 }
 

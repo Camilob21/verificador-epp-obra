@@ -34,7 +34,11 @@ menu "EPP: firmware del semáforo"
             default 10
         config EPP_PIN_UART_RX
             int "UART1 RX (va al pin 8 = TX de la Jetson)"
-            default 11
+            default 4
+            help
+                GPIO4 (J1-3). Antes era GPIO11, pero en la placa del grupo ese pin
+                quedo sin soldar. GPIO4 es pin de strapping (MTMS): si la placa no
+                arranca con la Jetson conectada, desconecte este cable al encender.
     endmenu
 
     menu "Actuadores"

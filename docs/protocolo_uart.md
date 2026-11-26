@@ -8,7 +8,7 @@ Implementación de referencia: `common/protocolo/` (C99, sin dependencias). La u
 |---|---|
 | Interfaz | UART, lógica de 3,3 V en ambos lados |
 | Velocidad | 115200 baudios, 8N1, sin control de flujo |
-| ESP32-C6 | UART1: TX = GPIO10, RX = GPIO11 |
+| ESP32-C6 | UART1: TX = GPIO10, RX = GPIO4 |
 | Jetson Nano | Conector J41: pin 8 = TX, pin 10 = RX, pin 6 = GND → `/dev/ttyTHS1` |
 | Cruce | TX de uno → RX del otro. **GND común obligatorio.** |
 

@@ -70,7 +70,9 @@ std::string jsonEstado(const Instantanea& s) {
   std::ostringstream o;
   o << "{\"t_s\":" << jsonNumero(s.t_s, 1) << ",\"estado\":" << jsonTexto(nombreEstado(s.estado))
     << ",\"luz\":" << jsonTexto(nombreLuz(s.luz)) << ",\"rele\":" << jsonBool(s.rele)
-    << ",\"mensaje\":" << jsonTexto(s.mensaje) << ",\"fps\":" << jsonNumero(s.fps, 1)
+    << ",\"mensaje\":" << jsonTexto(s.mensaje)
+    << ",\"cuenta_regresiva\":" << (s.cuenta_regresiva < 0 ? "null" : jsonNumero(s.cuenta_regresiva, 1))
+    << ",\"fps\":" << jsonNumero(s.fps, 1)
     << ",\"inferencia_ms\":" << jsonNumero(s.inferencia_ms, 1) << ",\"preproceso_ms\":" << jsonNumero(s.preproceso_ms, 1)
     << ",\"cuadros\":" << s.cuadros << ",\"verdes\":" << s.verdes << ",\"rojos\":" << s.rojos
     << ",\"ultimo\":" << (s.hay_ultimo ? jsonEvento(s.ultimo) : "null") << ",\"esp32\":{\"configurado\":"

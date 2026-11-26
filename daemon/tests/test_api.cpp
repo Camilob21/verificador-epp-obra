@@ -136,3 +136,12 @@ TEST(Api, CamaraEnVivoDesactivadaVaciaYActiva) {
   EXPECT_EQ(r.tipo, "image/jpeg");
   EXPECT_EQ(r.cuerpo.size(), 7u);
 }
+
+TEST(Api, CuentaRegresivaEnElEstado) {
+  Instantanea s;
+  Config c;
+  const auto p = analizarPeticion("GET /api/estado HTTP/1.1\r\n\r\n");
+  EXPECT_NE(atender(p, s, c, nullptr).cuerpo.find("\"cuenta_regresiva\":null"), std::string::npos);
+  s.cuenta_regresiva = 7.25;
+  EXPECT_NE(atender(p, s, c, nullptr).cuerpo.find("\"cuenta_regresiva\":7.2"), std::string::npos);
+}

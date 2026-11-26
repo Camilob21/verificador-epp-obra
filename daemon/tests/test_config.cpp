@@ -70,3 +70,12 @@ TEST(Config, AvisaSiNoSeExigeNingunaPrenda) {
   ASSERT_EQ(avisos.size(), 1u);
   EXPECT_NE(avisos[0].find("ATENCION"), std::string::npos);
 }
+
+TEST(Config, CuentaRegresiva) {
+  Config c;
+  EXPECT_DOUBLE_EQ(c.maquina.cuenta_regresiva_s, 10.0);
+  EXPECT_TRUE(aplicarLinea(c, "cuenta_regresiva_s = 0").empty());
+  EXPECT_DOUBLE_EQ(c.maquina.cuenta_regresiva_s, 0.0);
+  EXPECT_FALSE(aplicarLinea(c, "cuenta_regresiva_s = 90").empty());  // fuera de rango
+  EXPECT_DOUBLE_EQ(c.maquina.cuenta_regresiva_s, 0.0);
+}

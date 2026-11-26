@@ -25,7 +25,7 @@ Los pines se verificaron contra la [guía de usuario oficial de la ESP32-C6-DevK
 | TRIG del HC-SR04 | 2 | rotulado "2" en la placa | GPIO libre, sin función de arranque |
 | Botón factory reset | 3 | J1-13 | ídem; pull-up interno |
 | UART1 TX → Jetson pin 10 (RX) | 10 | J1-10 | libre; UART1 se asigna a cualquier pin por la matriz GPIO |
-| UART1 RX ← Jetson pin 8 (TX) | 11 | J1-11 | ídem |
+| UART1 RX ← Jetson pin 8 (TX) | 4 | J1-3 | strapping (MTMS); funciona porque la Jetson deja TX en alto. Antes era GPIO11, sin soldar en nuestra placa |
 
 **Pines evitados y por qué:**
 - GPIO4, 5, 8, 9 y 15 son de arranque (*strapping*). GPIO9 = botón BOOT; GPIO8 = LED RGB de la placa.
@@ -46,7 +46,7 @@ Los pines se verificaron contra la [guía de usuario oficial de la ESP32-C6-DevK
   Botón ──────┤ J1-13 GPIO3         │                      │
   (a GND)     │                     │                      │
   UART TX ────┤ J1-10 GPIO10        │                      │
-  UART RX ────┤ J1-11 GPIO11        │                      │
+  UART RX ────┤ J1-3  GPIO4         │                      │
   5V ─────────┤ J1-14         J3-5  ├ GPIO23 ─[330Ω]─▶|─ GND  LED verde
               │               J3-6  ├ GPIO22 ─[330Ω]─▶|─ GND  LED amarillo
               │               J3-7  ├ GPIO21 ─[330Ω]─▶|─ GND  LED rojo
@@ -131,7 +131,7 @@ El HC-SR501 se alimenta con 5 V, pero su salida suele ser de unos 3,3 V porque t
 ### 2.6 UART con la Jetson
 ```
  ESP32 GPIO10 (TX) ──────────► Jetson J41 pin 10 (RX)
- ESP32 GPIO11 (RX) ◄────────── Jetson J41 pin 8  (TX)
+ ESP32 GPIO4  (RX) ◄────────── Jetson J41 pin 8  (TX)
  ESP32 GND ─────────────────── Jetson J41 pin 6  (GND)
 ```
 Los dos lados trabajan con 3,3 V: conexión directa, sin conversor de nivel.

@@ -23,7 +23,13 @@
 
     <section id="panel-vivo" hidden>
       <h2>Cámara en vivo</h2>
-      <img id="vivo" alt="Imagen actual de la cámara con las detecciones dibujadas" width="640" height="480">
+      <div class="vivo-contenedor">
+        <img id="vivo" alt="Imagen actual de la cámara con las detecciones dibujadas" width="640" height="480">
+        <div id="superpuesto" class="superpuesto" hidden>
+          <div id="cronometro" class="cronometro"></div>
+          <div id="indicacion" class="indicacion"></div>
+        </div>
+      </div>
       <p id="vivo-aviso" class="pequeno"></p>
       <ul class="leyenda pequeno">
         <li><i style="background:rgb(40,90,255)"></i>persona</li>

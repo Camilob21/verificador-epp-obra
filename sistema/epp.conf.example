@@ -28,7 +28,9 @@ margen_centro = 0.30       # y estar centrada (+- este % del ancho)
 cuadros_en_posicion = 5
 ventana_verificacion_s = 1.5
 espera_max_verificacion_s = 4.0
-espera_max_persona_s = 20.0  # tiempo para ir de la caja a la marca tras acercar la mano
+cuenta_regresiva_s = 10   # tras acercar la mano: segundos para acomodarse viendose en el dashboard;
+                          # al llegar a 0 se verifica (0 = esperar a que la persona quede encuadrada)
+espera_max_persona_s = 20.0  # solo si cuenta_regresiva_s = 0: tiempo maximo para quedar encuadrado
 duracion_resultado_s = 5.0 # maximo 8: el ESP32 corta el verde a los 8 s
 
 # ---- Registro

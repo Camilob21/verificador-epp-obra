@@ -70,6 +70,7 @@ struct Instantanea {
   Luz luz = Luz::APAGADO;
   bool rele = false;
   std::string mensaje;
+  double cuenta_regresiva = -1;  // segundos restantes para acomodarse; -1 = no hay cuenta
   double fps = 0, inferencia_ms = 0, preproceso_ms = 0;
   unsigned long long cuadros = 0;
   int verdes = 0, rojos = 0;
