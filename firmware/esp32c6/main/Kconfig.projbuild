@@ -20,8 +20,12 @@ menu "EPP: firmware del semáforo"
             int "Entrada IN del módulo de relé"
             default 19
         config EPP_PIN_PIR
-            int "Salida OUT del sensor PIR"
+            int "OUT del PIR o ECHO del HC-SR04 (ECHO por divisor de voltaje: da 5 V)"
             default 18
+        config EPP_PIN_TRIG
+            int "TRIG del HC-SR04"
+            depends on EPP_SENSOR_ULTRASONICO
+            default 2
         config EPP_PIN_BOTON
             int "Botón de factory reset (a GND, pull-up interno)"
             default 3
@@ -30,7 +34,11 @@ menu "EPP: firmware del semáforo"
             default 10
         config EPP_PIN_UART_RX
             int "UART1 RX (va al pin 8 = TX de la Jetson)"
-            default 11
+            default 4
+            help
+                GPIO4 (J1-3). Antes era GPIO11, pero en la placa del grupo ese pin
+                quedo sin soldar. GPIO4 es pin de strapping (MTMS): si la placa no
+                arranca con la Jetson conectada, desconecte este cable al encender.
     endmenu
 
     menu "Actuadores"
@@ -113,6 +121,58 @@ menu "EPP: firmware del semáforo"
     endmenu
 
     menu "Entradas"
+        choice EPP_SENSOR_PRESENCIA
+            prompt "Sensor de presencia"
+            default EPP_SENSOR_ULTRASONICO
+            help
+                Ambos reportan la presencia con EVENTO_PIR (el daemon no cambia). El
+                ultrasonico ademas mide la distancia y la envia con EVENTO_DISTANCIA.
+            config EPP_SENSOR_PIR
+                bool "PIR HC-SR501 (requiere calibrar sensibilidad y tiempo en el modulo)"
+            config EPP_SENSOR_ULTRASONICO
+                bool "Ultrasonico HC-SR04 (mide distancia; sin calibracion fisica)"
+        endchoice
+
+        config EPP_US_DIST_MIN_CM
+            int "Presencia: distancia minima (cm)"
+            depends on EPP_SENSOR_ULTRASONICO
+            range 2 400
+            default 5
+        config EPP_US_DIST_MAX_CM
+            int "Presencia: distancia maxima (cm)"
+            depends on EPP_SENSOR_ULTRASONICO
+            range 10 400
+            default 40
+            help
+                El sensor funciona como "boton sin contacto": la persona acerca la mano
+                a la caja (5-40 cm) para iniciar la verificacion y luego se para en la
+                marca. Se descarto detectar el cuerpo a la distancia de la camara: con
+                ropa como blanco el HC-SR04 casi no recibe eco a mas de ~1,2 m
+                (medido el 24-nov: 0-3 de 16 ecos a 1,5 m).
+        config EPP_US_PERIODO_MS
+            int "Periodo entre mediciones (ms)"
+            depends on EPP_SENSOR_ULTRASONICO
+            range 60 1000
+            default 60
+            help
+                El fabricante recomienda al menos 60 ms entre disparos para que el
+                eco anterior no se confunda con el siguiente.
+        config EPP_US_CONFIRMAR_MS
+            int "Tiempo en rango para confirmar presencia (ms)"
+            depends on EPP_SENSOR_ULTRASONICO
+            range 0 5000
+            default 200
+        config EPP_US_AUSENCIA_MS
+            int "Tiempo fuera de rango para confirmar ausencia (ms)"
+            depends on EPP_SENSOR_ULTRASONICO
+            range 0 10000
+            default 1500
+        config EPP_US_REPORTE_MS
+            int "Periodo del EVENTO_DISTANCIA a la Jetson (ms, 0 = no enviar)"
+            depends on EPP_SENSOR_ULTRASONICO
+            range 0 10000
+            default 250
+
         config EPP_PIR_CALENTAMIENTO_S
             int "Calentamiento del PIR tras encender (s)"
             range 0 120

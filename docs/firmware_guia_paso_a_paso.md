@@ -1,5 +1,7 @@
 # Guía paso a paso: firmware del ESP32-C6 (bring-up y verificación)
 
+> **Prototipo final:** no se montan el relé ni el buzzer; la autorización se indica con el LED verde. El firmware los conserva (relé en GPIO19, buzzer en GPIO20) como **mejora futura**, por eso esta documentación técnica los sigue describiendo. Las secciones y pruebas de relé y buzzer no aplican al prototipo.
+
 Formato de cada paso: **comando** (uno por bloque) → **salida esperada** → **criterio de aceptación** → **cuándo mostrarle la salida a Claude**. Anote cada resultado en la tabla del final (formato: afirmación → cómo se verificó → resultado), que sirve de registro para la declaración de uso de IA.
 
 Siga las partes en orden y no avance si un criterio falla.
@@ -306,7 +308,7 @@ Escriba `v` y espere 5 s.
 ```bash
 idf.py build && idf.py -p /dev/ttyUSB0 flash monitor
 ```
-**Esperado:** igual que en 1.3, pero **sin** la línea `MODO PRUEBA` y con `I (...) enlace: UART1 115200 8N1, TX=GPIO10 RX=GPIO11`.
+**Esperado:** igual que en 1.3, pero **sin** la línea `MODO PRUEBA` y con `I (...) enlace: UART1 115200 8N1, TX=GPIO10 RX=GPIO4`.
 
 ### 6.2 En la Jetson (lo hace su compañero, comando por comando)
 ```bash
@@ -322,7 +324,7 @@ ls -l /dev/ttyTHS1
 **Criterio:** el dispositivo existe. *Que corresponda a los pines 8 y 10 en JetPack 4.6.1 lo indica NVIDIA en sus foros y en JetsonHacks, pero no lo verifiqué en su Jetson.*
 
 ### 6.3 Cableado
-Con **todo apagado**: GPIO10 → pin 10, GPIO11 ← pin 8, GND ↔ pin 6 (README, sección 2.6). Revise dos veces la numeración del conector J41: el pin 1 está marcado en la placa.
+Con **todo apagado**: GPIO10 → pin 10, GPIO4 ← pin 8, GND ↔ pin 6 (README, sección 2.6). Revise dos veces la numeración del conector J41: el pin 1 está marcado en la placa.
 
 ### 6.4 Primera prueba: el simulador corriendo en la Jetson
 Copie `tools/sim_jetson.py` a la Jetson y, si hace falta, instale pyserial con `sudo apt install python3-serial`. Luego:

@@ -11,7 +11,13 @@
 //
 // Hilos: el principal hace camara + inferencia + decision; uno atiende el UART (latido cada
 // 200 ms aunque la inferencia tarde) y otro la API HTTP. Comparten datos solo bajo candado.
+//
+// Puesta en marcha (bring-up): si 'marca_puesta_en_marcha' esta configurada y el archivo no
+// existe, el equipo NO controla el acceso hasta que el instalador lo confirma (ver
+// epp/puesta_en_marcha.hpp). Factory reset: el boton del ESP32 hace que este programa cree
+// 'solicitud_fabrica'; epp-fabrica.path (root) borra los datos y lo reinicia en modo bring-up.
 
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -38,6 +44,7 @@
 #include "epp/maquina_estados.hpp"
 #include "epp/posprocesamiento.hpp"
 #include "epp/preprocesamiento.hpp"
+#include "epp/puesta_en_marcha.hpp"
 #include "inferencia_tensorrt.hpp"
 #include "puerto_serie.hpp"
 #include "registro_sqlite.hpp"
@@ -48,6 +55,31 @@ namespace {
 
 constexpr int DESCARTAR = 30;  // primeros cuadros de la camara (el primero llega corrupto)
 constexpr const char* CONFIG_POR_DEFECTO = "/etc/epp/epp.conf";
+
+// La crea hora-http.sh al sincronizar por la red; /run se vacia en cada arranque
+constexpr const char* MARCA_HORA = "/run/hora-http.ok";
+constexpr double SEGUNDOS_CONFIRMAR_PUESTA = 3.0;
+
+bool existe(const std::string& ruta) {
+  struct stat st;
+  return ::stat(ruta.c_str(), &st) == 0;
+}
+
+// Escribe en un temporal y lo renombra: quien vigile la ruta nunca ve un archivo a medias.
+bool escribirArchivo(const std::string& ruta, const std::string& contenido) {
+  const std::string tmp = ruta + ".tmp";
+  FILE* f = std::fopen(tmp.c_str(), "w");
+  if (!f) return false;
+  bool ok = std::fputs(contenido.c_str(), f) >= 0;
+  ok = std::fflush(f) == 0 && ok;
+  ok = ::fsync(fileno(f)) == 0 && ok;
+  ok = std::fclose(f) == 0 && ok;
+  if (!ok || std::rename(tmp.c_str(), ruta.c_str()) != 0) {
+    std::remove(tmp.c_str());
+    return false;
+  }
+  return true;
+}
 
 std::atomic<bool> g_salir{false};
 void alSenal(int) { g_salir = true; }
@@ -261,6 +293,29 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
 
   epp::MaquinaEstados maquina(cfg.maquina, cfg.decision);
   bool pir_presencia = false;
+
+  // -- puesta en marcha (bring-up) y factory reset
+  bool en_puesta = !cfg.marca_puesta_en_marcha.empty() && !existe(cfg.marca_puesta_en_marcha);
+  if (en_puesta && !comp) {
+    std::printf("AVISO: sin ESP32 no se puede confirmar la puesta en marcha con el sensor; se omite\n");
+    en_puesta = false;
+  }
+  epp::PuestaEnMarcha puesta(SEGUNDOS_CONFIRMAR_PUESTA);
+  bool esperar_soltar = false;     // la mano que confirmo la puesta en marcha no inicia una verificacion
+  bool fabrica_solicitada = false;
+  bool enlace_vivo = false, hora_ok = false;  // se actualizan una vez por segundo
+  if (en_puesta) {
+    std::printf("PUESTA EN MARCHA: no existe %s; el equipo NO controla el acceso hasta que se confirme "
+                "(mano frente al sensor %.0f s)\n",
+                cfg.marca_puesta_en_marcha.c_str(), SEGUNDOS_CONFIRMAR_PUESTA);
+    {
+      std::lock_guard<std::mutex> lock(comp->m);
+      comp->enlace.ordenarEstado(PROTO_ST_AMARILLO_FIJO);
+    }
+    std::lock_guard<std::mutex> lock(api.m);
+    api.s.en_puesta_en_marcha = true;
+    api.s.luz = epp::Luz::AMARILLO_FIJO;
+  }
   int verdes = 0, rojos = 0, n = 0;
   double tCap = 0, tPre = 0, tInf = 0, tPost = 0, t_ultima_tel = -1e9;
   double t_muestreo = -1e9, t_vista = -1e9;
@@ -318,6 +373,10 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
       api.s.enlace = st_enlace;
       api.s.parser = st_parser;
       api.s.enlace_ok = enlace_ok;
+      hora_ok = existe(MARCA_HORA);
+      api.s.hora = epp::fechaActualIso();
+      api.s.hora_sincronizada = hora_ok;
+      enlace_vivo = enlace_ok;
       cuadros_ventana = 0;
       inf_ventana = pre_ventana = 0;
       t_muestreo = t;
@@ -343,8 +402,21 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
                         e.pir_listo ? "" : " (calentando)");
             break;
           case T::BOTON:
-            // TODO fase 6: borrar configuracion y eventos y volver al bring-up
             std::printf("[%6.1f s] BOTON: factory reset solicitado (confirmado con ACK)\n", t);
+            if (cfg.solicitud_fabrica.empty()) {
+              std::printf("           solicitud_fabrica vacio en epp.conf: no se borra nada\n");
+            } else if (!fabrica_solicitada) {
+              if (escribirArchivo(cfg.solicitud_fabrica, epp::fechaActualIso() + "\n")) {
+                fabrica_solicitada = true;
+                std::printf("           creado %s: epp-fabrica.path borra los datos y reinicia el servicio\n",
+                            cfg.solicitud_fabrica.c_str());
+                std::lock_guard<std::mutex> lock(api.m);
+                api.s.restaurando = true;
+                api.s.mensaje = "Restaurando valores de fabrica; el equipo se reinicia en unos segundos";
+              } else {
+                std::printf("AVISO: no se pudo crear %s\n", cfg.solicitud_fabrica.c_str());
+              }
+            }
             break;
           case T::ENLACE_PERDIDO:
             std::printf("[%6.1f s] ESP32: perdio el latido, esta en fail-safe (ROJO)\n", t);
@@ -359,7 +431,7 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
               std::printf("[%6.1f s] ESP32: enlace restablecido; se reinicia la verificacion\n", t);
             maquina = epp::MaquinaEstados(cfg.maquina, cfg.decision);
             std::lock_guard<std::mutex> lock(comp->m);
-            comp->enlace.ordenarEstado(PROTO_ST_REPOSO);
+            comp->enlace.ordenarEstado(en_puesta ? PROTO_ST_AMARILLO_FIJO : PROTO_ST_REPOSO);
             break;
           }
           case T::TELEMETRIA:
@@ -376,6 +448,13 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
               t_ultima_tel = t;
             }
             break;
+          case T::DISTANCIA: {  // ~4 por segundo: solo se guarda para la API, no se imprime
+            std::lock_guard<std::mutex> lock(api.m);
+            api.s.hay_distancia = true;
+            api.s.distancia_valida = e.distancia_valida;
+            api.s.distancia_m = e.distancia_mm / 1000.0;
+            break;
+          }
           case T::NACK:
             std::printf("[%6.1f s] ESP32 rechazo tipo 0x%02X (codigo %u)\n", t, e.tipo_rechazado, e.codigo);
             break;
@@ -387,13 +466,60 @@ int modoCamara(const epp::Config& cfg, int cuadros) {
       }
     }
 
+    // -- factory reset en curso: no se decide nada (el rele sigue apagado) hasta que systemd nos detenga
+    if (fabrica_solicitada) continue;
+
+    // -- puesta en marcha: comprobaciones y confirmacion; la maquina de estados no corre
+    if (en_puesta) {
+      epp::EntradasPuesta ep;
+      ep.camara = true;  // si llegamos aqui, la camara entrego este cuadro
+      ep.esp32 = enlace_vivo;
+      ep.presencia = pir_presencia;
+      ep.hora = hora_ok;
+      const epp::EstadoPuesta ps = puesta.actualizar(t, ep);
+      {
+        std::lock_guard<std::mutex> lock(api.m);
+        api.s.t_s = t;
+        api.s.cuadros = static_cast<unsigned long long>(n + 1);
+        api.s.puesta = ps;
+        api.s.mensaje = ps.mensaje;
+      }
+      if (!ps.completa) continue;
+      if (escribirArchivo(cfg.marca_puesta_en_marcha, epp::fechaActualIso() + "\n"))
+        std::printf("[%6.1f s] PUESTA EN MARCHA completa: creado %s; empieza el control de acceso\n", t,
+                    cfg.marca_puesta_en_marcha.c_str());
+      else
+        std::printf("[%6.1f s] AVISO: puesta en marcha completa pero no se pudo crear %s (al reiniciar se pedira "
+                    "de nuevo)\n",
+                    t, cfg.marca_puesta_en_marcha.c_str());
+      en_puesta = false;
+      esperar_soltar = true;
+      maquina = epp::MaquinaEstados(cfg.maquina, cfg.decision);
+      {
+        std::lock_guard<std::mutex> lock(comp->m);
+        comp->enlace.ordenarEstado(PROTO_ST_REPOSO);
+        comp->enlace.ordenarBuzzer(PROTO_BZ_OK);
+      }
+      std::lock_guard<std::mutex> lock(api.m);
+      api.s.en_puesta_en_marcha = false;
+      api.s.estado = epp::Estado::REPOSO;
+      api.s.luz = epp::Luz::APAGADO;
+      api.s.mensaje = "Puesta en marcha completa. Retire la mano";
+      continue;
+    }
+
     // -- decision
-    const bool pir = cfg.maquina.usar_pir && comp ? pir_presencia : true;
+    bool pir = cfg.maquina.usar_pir && comp ? pir_presencia : true;
+    if (esperar_soltar) {  // hasta que retire la mano con la que confirmo la puesta en marcha
+      if (!pir_presencia) esperar_soltar = false;
+      pir = false;
+    }
     const epp::Salida s = maquina.actualizar(t, pir, dets);
     {
       std::lock_guard<std::mutex> lock(api.m);
       api.s.t_s = t;
       api.s.cuadros = static_cast<unsigned long long>(n + 1);
+      api.s.cuenta_regresiva = s.segundos_restantes;
       if (s.cambio) {
         api.s.estado = s.estado;
         api.s.luz = s.luz;

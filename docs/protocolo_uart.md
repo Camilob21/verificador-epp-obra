@@ -1,5 +1,7 @@
 # Protocolo UART Jetson Nano ↔ ESP32-C6 (v1)
 
+> **Prototipo final:** no se montan el relé ni el buzzer; la autorización se indica con el LED verde. El firmware los conserva (relé en GPIO19, buzzer en GPIO20) como **mejora futura**, por eso esta documentación técnica los sigue describiendo. Las secciones y pruebas de relé y buzzer no aplican al prototipo.
+
 Implementación de referencia: `common/protocolo/` (C99, sin dependencias). La usan el firmware del ESP32 y el daemon de la Jetson. **Esta biblioteca es el contrato entre los dos lados**: si alguien cambia el formato, cambia la biblioteca, esta tabla y la prueba PU-18. No hay dos implementaciones distintas.
 
 ## 1. Capa física
@@ -8,7 +10,7 @@ Implementación de referencia: `common/protocolo/` (C99, sin dependencias). La u
 |---|---|
 | Interfaz | UART, lógica de 3,3 V en ambos lados |
 | Velocidad | 115200 baudios, 8N1, sin control de flujo |
-| ESP32-C6 | UART1: TX = GPIO10, RX = GPIO11 |
+| ESP32-C6 | UART1: TX = GPIO10, RX = GPIO4 |
 | Jetson Nano | Conector J41: pin 8 = TX, pin 10 = RX, pin 6 = GND → `/dev/ttyTHS1` |
 | Cruce | TX de uno → RX del otro. **GND común obligatorio.** |
 
@@ -61,6 +63,7 @@ En la Jetson, el servicio `nvgetty` abre una consola en `/dev/ttyTHS1` y hay que
 | 0x82 | EVENTO_BOTON | E → J | 1 | `1` = factory reset solicitado | **la Jetson debe responder ACK** |
 | 0x83 | TELEMETRIA | E → J | 42 | ver sección 4 | — |
 | 0x84 | EVENTO_ENLACE | E → J | 1 | 0 = latido perdido (fail-safe), 1 = restablecido | — |
+| 0x85 | EVENTO_DISTANCIA | E → J | 3 | distancia en mm (u16 LE), válida (0/1) | — (periódico, ~4 por segundo; agregado el 24-nov para el HC-SR04) |
 
 ¹ Valor de `esp_reset_reason_t` en ESP-IDF v5.5: 1 = encendido, 3 = esp_restart, 4 = pánico, 5 = watchdog de interrupciones, 6 = watchdog de tareas, 9 = brownout.
 

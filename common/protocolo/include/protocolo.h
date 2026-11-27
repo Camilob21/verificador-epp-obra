@@ -56,6 +56,8 @@ typedef enum {
     PROTO_EVENTO_BOTON     = 0x82, /* LEN 1: 1 = factory reset solicitado. Espera ACK. */
     PROTO_TELEMETRIA       = 0x83, /* LEN 42: ver proto_telemetria_t. */
     PROTO_EVENTO_ENLACE    = 0x84, /* LEN 1: 0 = latido perdido (fail-safe), 1 = restablecido. */
+    PROTO_EVENTO_DISTANCIA = 0x85, /* LEN 3: distancia en mm (u16), valida (0/1). Sensor HC-SR04,
+                                      periodico (~4 por segundo). Sin ACK: si se pierde llega la siguiente. */
 } proto_tipo_t;
 
 /* Estados del semáforo que la Jetson puede ordenar (mensaje ESTADO). */
@@ -158,6 +160,7 @@ void proto_msg_arranque(proto_trama_t *t, uint8_t motivo_reset, uint8_t fw_mayor
 void proto_msg_evento_pir(proto_trama_t *t, bool presencia, bool listo);
 void proto_msg_evento_boton(proto_trama_t *t);
 void proto_msg_evento_enlace(proto_trama_t *t, bool restablecido);
+void proto_msg_evento_distancia(proto_trama_t *t, uint16_t distancia_mm, bool valida);
 void proto_msg_telemetria(proto_trama_t *t, const proto_telemetria_t *tel);
 
 /* Lectores: devuelven false si el tipo, la longitud o el valor no son válidos. */
@@ -169,6 +172,7 @@ bool proto_leer_arranque(const proto_trama_t *t, uint8_t *motivo, uint8_t *fw_ma
 bool proto_leer_evento_pir(const proto_trama_t *t, bool *presencia, bool *listo);
 bool proto_leer_evento_boton(const proto_trama_t *t);
 bool proto_leer_evento_enlace(const proto_trama_t *t, bool *restablecido);
+bool proto_leer_evento_distancia(const proto_trama_t *t, uint16_t *distancia_mm, bool *valida);
 bool proto_leer_telemetria(const proto_trama_t *t, proto_telemetria_t *tel);
 
 /* ------------------------------------------------------------------ */

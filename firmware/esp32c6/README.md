@@ -1,4 +1,6 @@
-# Firmware ESP32-C6: semáforo, relé y sensores del verificador de EPP
+# Firmware ESP32-C6: semáforo y sensores del verificador de EPP
+
+> **Prototipo final:** no se montan el relé ni el buzzer; la autorización se indica con el LED verde. El firmware los conserva (relé en GPIO19, buzzer en GPIO20) como **mejora futura**, por eso esta documentación técnica los sigue describiendo. Las secciones y pruebas de relé y buzzer no aplican al prototipo.
 
 Firmware en C con ESP-IDF para la **ESP32-C6-DevKitC-1**. Maneja el semáforo (LEDs rojo, amarillo y verde), el buzzer, el relé, el sensor PIR y el botón de factory reset. Se comunica con la Jetson Nano por UART, con tramas protegidas por CRC, y tiene un fail-safe por latido.
 
@@ -21,13 +23,14 @@ Los pines se verificaron contra la [guía de usuario oficial de la ESP32-C6-DevK
 | LED verde | 23 | J3-5 | ídem; los tres LEDs quedan juntos |
 | Buzzer | 20 | J3-8 | ídem |
 | Relé (IN) | 19 | J3-9 | ídem; no es pin de arranque, así que su nivel durante el boot no afecta el arranque |
-| PIR (OUT) | 18 | J3-10 | ídem |
+| PIR (OUT) o ECHO del HC-SR04 (por divisor) | 18 | J3-10 | ídem |
+| TRIG del HC-SR04 | 2 | rotulado "2" en la placa | GPIO libre, sin función de arranque |
 | Botón factory reset | 3 | J1-13 | ídem; pull-up interno |
 | UART1 TX → Jetson pin 10 (RX) | 10 | J1-10 | libre; UART1 se asigna a cualquier pin por la matriz GPIO |
-| UART1 RX ← Jetson pin 8 (TX) | 11 | J1-11 | ídem |
+| UART1 RX ← Jetson pin 8 (TX) | 4 | J1-3 | strapping (MTMS); funciona porque la Jetson deja TX en alto. Antes era GPIO11, sin soldar en nuestra placa |
 
 **Pines evitados y por qué:**
-- GPIO4, 5, 8, 9 y 15 son de arranque (*strapping*). GPIO9 = botón BOOT; GPIO8 = LED RGB de la placa.
+- GPIO4, 5, 8, 9 y 15 son de arranque (*strapping*). GPIO9 = botón BOOT; GPIO8 = LED RGB de la placa. Excepción: el RX de la UART quedó en GPIO4 porque GPIO11 estaba sin soldar; funciona porque la línea TX de la Jetson está en alto en reposo. Si la placa no arranca con la Jetson conectada, desconectar ese cable al encender.
 - GPIO12 y 13 son el USB nativo (D− y D+).
 - GPIO16 y 17 son la UART0 de la consola, cableada al puente USB-UART.
 - GPIO0 y 1 son las entradas del cristal de 32 kHz (se dejan libres por precaución).
@@ -45,7 +48,7 @@ Los pines se verificaron contra la [guía de usuario oficial de la ESP32-C6-DevK
   Botón ──────┤ J1-13 GPIO3         │                      │
   (a GND)     │                     │                      │
   UART TX ────┤ J1-10 GPIO10        │                      │
-  UART RX ────┤ J1-11 GPIO11        │                      │
+  UART RX ────┤ J1-3  GPIO4         │                      │
   5V ─────────┤ J1-14         J3-5  ├ GPIO23 ─[330Ω]─▶|─ GND  LED verde
               │               J3-6  ├ GPIO22 ─[330Ω]─▶|─ GND  LED amarillo
               │               J3-7  ├ GPIO21 ─[330Ω]─▶|─ GND  LED rojo
@@ -92,7 +95,36 @@ Así, el lado del optoacoplador funciona a 3,3 V: un "alto" del GPIO apaga el re
 
 Los contactos del relé (COM, NO, NC) se usan para la carga, por ejemplo un LED o una cerradura de 12 V con su propia fuente. **No conecte 110 V AC en el prototipo.**
 
-### 2.5 Sensor PIR (HC-SR501 o similar)
+### 2.5 Sensor de presencia: ultrasónico HC-SR04 (opción por defecto)
+
+Se cambió el PIR por un HC-SR04 porque el PIR necesita calibrarse a mano (sensibilidad y tiempo) y solo dice "hay o no hay"; el ultrasónico **mide la distancia** (variable física continua) y funciona como **botón sin contacto**: la persona acerca la mano a la caja (5–40 cm, ajustable en `menuconfig` → *Entradas*) para iniciar la verificación y luego se para en la marca.
+
+**Ubicación: junto a la marca del piso, no junto a la cámara.** La ropa absorbe el ultrasonido. Medición del 24-nov, persona de frente, torso como blanco, 16 disparos por segundo:
+
+| Distancia | Ecos válidos |
+|---|---|
+| 45–70 cm | 5–16 de 16 |
+| 85–100 cm | ~12 de 16 |
+| 1,2–1,35 m | 2–3 de 16 |
+| 1,5–1,7 m | 0–3 de 16 |
+
+Por eso no se usa para detectar el cuerpo a la distancia de la cámara (1,5–2 m), sino la mano de cerca, donde el eco es firme (medido: 8–35 cm con lecturas estables). Va en la misma caja de la cámara, con un cartel "Acerque la mano para comenzar".
+
+```
+ HC-SR04 VCC  ← 5V (J1-14)
+ HC-SR04 GND  ← GND
+ HC-SR04 TRIG ← GPIO2                (3,3 V del ESP32 alcanzan para disparar el sensor)
+ HC-SR04 ECHO ─[1 kΩ]──●──[2 kΩ]── GND
+                       └──────────► GPIO18   (≈ 3,3 V en alto)
+```
+
+> ⚠️ **ECHO entrega 5 V y ningún pin del ESP32-C6 los tolera: el divisor es obligatorio.** Con 1 kΩ arriba y 2 kΩ abajo, 5 V × 2/3 ≈ 3,3 V. Sirve cualquier par con relación 1:2 (2,2 kΩ / 4,7 kΩ, 10 kΩ / 20 kΩ). **No use dos resistencias iguales:** darían 2,5 V, justo en el límite de lo que el ESP32 reconoce como "alto". Antes de conectar GPIO18, mida con el multímetro el punto medio del divisor con un objeto a 10 cm del sensor: debe dar pulsos por debajo de 3,6 V.
+
+El firmware dispara cada 60 ms, mide el ancho del eco con una interrupción, toma la mediana de las últimas 10 mediciones (bastan 2 válidas) y aplica histéresis: 200 ms en rango para "presencia" y 1,5 s fuera de rango para "ausencia". El daemon toma la presencia como disparo: pasa a "esperando persona" y espera hasta 20 s a que se pare en la marca, aunque la mano ya se haya retirado. La presencia viaja en el mismo `EVENTO_PIR` de siempre y la distancia en `EVENTO_DISTANCIA` (0x85), que el dashboard muestra en metros.
+
+### 2.5 bis Sensor PIR (HC-SR501, opción alternativa)
+
+Se elige en `menuconfig` → *EPP* → *Entradas* → *Sensor de presencia*.
 ```
  PIR VCC ← 5V      PIR GND ← GND      PIR OUT → GPIO18
 ```
@@ -101,7 +133,7 @@ El HC-SR501 se alimenta con 5 V, pero su salida suele ser de unos 3,3 V porque t
 ### 2.6 UART con la Jetson
 ```
  ESP32 GPIO10 (TX) ──────────► Jetson J41 pin 10 (RX)
- ESP32 GPIO11 (RX) ◄────────── Jetson J41 pin 8  (TX)
+ ESP32 GPIO4  (RX) ◄────────── Jetson J41 pin 8  (TX)
  ESP32 GND ─────────────────── Jetson J41 pin 6  (GND)
 ```
 Los dos lados trabajan con 3,3 V: conexión directa, sin conversor de nivel.

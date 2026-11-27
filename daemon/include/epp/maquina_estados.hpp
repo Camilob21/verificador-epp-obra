@@ -1,8 +1,13 @@
 // maquina_estados.hpp — flujo del punto de control
 //
-//   REPOSO --(PIR, o siempre si no hay PIR)--> ESPERANDO_PERSONA
-//   ESPERANDO_PERSONA --(persona grande y centrada N cuadros seguidos)--> VERIFICANDO
-//   ESPERANDO_PERSONA --(tiempo maximo, solo con PIR)--> REPOSO
+//   REPOSO --(sensor de presencia, o siempre si no hay sensor)--> ESPERANDO_PERSONA
+//   Con sensor y cuenta_regresiva_s > 0 (flujo por defecto desde el 26-nov):
+//     ESPERANDO_PERSONA --(fin de la cuenta regresiva, sin exigir encuadre)--> VERIFICANDO
+//     (la persona se acomoda viendose en el dashboard; si al final no esta bien encuadrada,
+//      la verificacion no junta cuadros suficientes y da ROJO "no se pudo verificar")
+//   Sin cuenta regresiva (o sin sensor):
+//     ESPERANDO_PERSONA --(persona grande y centrada N cuadros seguidos)--> VERIFICANDO
+//     ESPERANDO_PERSONA --(tiempo maximo, solo con sensor)--> REPOSO
 //   VERIFICANDO --(ventana completa y decidido)--> RESULTADO_VERDE / RESULTADO_ROJO
 //   VERIFICANDO --(tiempo maximo sin cuadros suficientes)--> RESULTADO_ROJO ("no se pudo verificar")
 //   RESULTADO_* --(duracion del resultado)--> REPOSO
@@ -29,7 +34,8 @@ struct ConfigMaquina {
   int cuadros_en_posicion = 5;         // cuadros seguidos en posicion para empezar a verificar
   double ventana_verificacion_s = 1.5; // tiempo minimo acumulando cuadros
   double espera_max_verificacion_s = 4.0;
-  double espera_max_persona_s = 15.0;  // solo con PIR
+  double espera_max_persona_s = 20.0;  // solo con sensor y sin cuenta regresiva
+  double cuenta_regresiva_s = 10.0;    // solo con sensor: segundos para acomodarse; 0 = criterio de encuadre
   double duracion_resultado_s = 5.0;
 };
 
@@ -39,6 +45,7 @@ struct Salida {
   bool rele = false;  // solo se activa en RESULTADO_VERDE
   bool cambio = false;
   std::string mensaje;
+  double segundos_restantes = -1;  // cuenta regresiva en curso; -1 = no hay cuenta regresiva
   std::optional<ResultadoVerificacion> resultado;  // solo al entrar a un resultado
 };
 
@@ -53,6 +60,7 @@ class MaquinaEstados {
 
  private:
   void entrar(Estado e, double t);
+  bool conCuentaRegresiva() const { return cfg_.usar_pir && cfg_.cuenta_regresiva_s > 0; }
   Luz luzDe(Estado e) const;
 
   ConfigMaquina cfg_;

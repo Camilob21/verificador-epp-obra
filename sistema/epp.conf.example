@@ -21,13 +21,16 @@ exigir_casco = si
 exigir_chaleco = si
 
 # ---- Flujo del punto de control
-usar_pir = no              # si = esperar al PIR del ESP32 antes de buscar a la persona
+usar_pir = si              # si = la verificacion empieza cuando la persona acerca la mano al
+                           # HC-SR04 (boton sin contacto); no = siempre buscando persona
 alto_minimo = 0.45         # la persona debe ocupar este % del alto de la imagen
 margen_centro = 0.30       # y estar centrada (+- este % del ancho)
 cuadros_en_posicion = 5
 ventana_verificacion_s = 1.5
 espera_max_verificacion_s = 4.0
-espera_max_persona_s = 15.0
+cuenta_regresiva_s = 10   # tras acercar la mano: segundos para acomodarse viendose en el dashboard;
+                          # al llegar a 0 se verifica (0 = esperar a que la persona quede encuadrada)
+espera_max_persona_s = 20.0  # solo si cuenta_regresiva_s = 0: tiempo maximo para quedar encuadrado
 duracion_resultado_s = 5.0 # maximo 8: el ESP32 corta el verde a los 8 s
 
 # ---- Registro
@@ -45,3 +48,11 @@ api_puerto = 8081                 # 0 = sin API
 # de la red local: activarla solo para instalar, calibrar y demostrar.
 camara_en_vivo = si
 calidad_jpeg = 75
+
+# ---- Puesta en marcha (bring-up) y factory reset
+# Mientras este archivo no exista el equipo NO controla el acceso: el dashboard muestra el asistente
+# de puesta en marcha y se confirma con la mano frente al sensor 3 s. El factory reset lo borra.
+marca_puesta_en_marcha = /var/lib/epp/puesta_en_marcha.ok
+# El boton del ESP32 (5 s) hace que el daemon cree este archivo; epp-fabrica.path lo vigila y
+# ejecuta /usr/local/sbin/epp-fabrica. No cambiar la ruta sin cambiar tambien epp-fabrica.path.
+solicitud_fabrica = /var/lib/epp/solicitud_fabrica

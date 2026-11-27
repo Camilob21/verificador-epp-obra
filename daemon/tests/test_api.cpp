@@ -36,6 +36,26 @@ TEST(Json, EscapaComillasYControl) {
   EXPECT_EQ(jsonNumero(1.234, 1), "1.2");
 }
 
+TEST(Api, PuestaEnMarchaHoraYRestauracion) {
+  Instantanea s;
+  s.hora = "2026-11-26T15:00:00-05:00";
+  auto j = jsonEstado(s);
+  EXPECT_NE(j.find("\"puesta_en_marcha\":null"), std::string::npos);  // en operacion normal
+  EXPECT_NE(j.find("\"hora\":\"2026-11-26T15:00:00-05:00\""), std::string::npos);
+  EXPECT_NE(j.find("\"hora_sincronizada\":false"), std::string::npos);
+  EXPECT_NE(j.find("\"restaurando\":false"), std::string::npos);
+  s.en_puesta_en_marcha = true;
+  s.puesta.camara = s.puesta.esp32 = true;
+  s.puesta.confirmacion_s = 1.5;
+  s.puesta.confirmacion_total_s = 3;
+  s.restaurando = true;
+  j = jsonEstado(s);
+  EXPECT_NE(j.find("\"puesta_en_marcha\":{\"camara\":true,\"esp32\":true,\"sensor\":false,\"hora\":false,"
+                   "\"confirmacion_s\":1.5,\"confirmacion_total_s\":3.0,\"completa\":false}"),
+            std::string::npos);
+  EXPECT_NE(j.find("\"restaurando\":true"), std::string::npos);
+}
+
 TEST(Api, EstadoContieneLoPrincipal) {
   Instantanea s;
   s.estado = Estado::RESULTADO_ROJO;
@@ -49,6 +69,17 @@ TEST(Api, EstadoContieneLoPrincipal) {
   EXPECT_NE(r.cuerpo.find("\"mensaje\":\"Falta: casco\""), std::string::npos);
   EXPECT_NE(r.cuerpo.find("\"rele\":false"), std::string::npos);
   EXPECT_NE(r.cuerpo.find("\"ultimo\":null"), std::string::npos);
+}
+
+TEST(Api, DistanciaEnElEstado) {
+  Instantanea s;
+  Config c;
+  const auto p = analizarPeticion("GET /api/estado HTTP/1.1\r\n\r\n");
+  EXPECT_NE(atender(p, s, c, nullptr).cuerpo.find("\"distancia_m\":null"), std::string::npos);
+  s.hay_distancia = true;
+  s.distancia_valida = true;
+  s.distancia_m = 1.625;
+  EXPECT_NE(atender(p, s, c, nullptr).cuerpo.find("\"distancia_m\":1.625"), std::string::npos);
 }
 
 TEST(Api, EventosConLimiteYSinBase) {
@@ -124,4 +155,13 @@ TEST(Api, CamaraEnVivoDesactivadaVaciaYActiva) {
   EXPECT_EQ(r.codigo, 200);
   EXPECT_EQ(r.tipo, "image/jpeg");
   EXPECT_EQ(r.cuerpo.size(), 7u);
+}
+
+TEST(Api, CuentaRegresivaEnElEstado) {
+  Instantanea s;
+  Config c;
+  const auto p = analizarPeticion("GET /api/estado HTTP/1.1\r\n\r\n");
+  EXPECT_NE(atender(p, s, c, nullptr).cuerpo.find("\"cuenta_regresiva\":null"), std::string::npos);
+  s.cuenta_regresiva = 7.25;
+  EXPECT_NE(atender(p, s, c, nullptr).cuerpo.find("\"cuenta_regresiva\":7.2"), std::string::npos);
 }

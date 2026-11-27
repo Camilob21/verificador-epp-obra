@@ -13,8 +13,8 @@ Webcam USB (YUYV) ──USB──> Jetson Nano 4 GB
                               │ decisión multicuadro → estados → SQLite/API
                               ├── HTTP local ──> nginx ──> Dashboard JS/HTML/CSS
                               └── UART 3,3 V + CRC/latido ──> ESP32-C6
-                                                            │ LEDs, buzzer, relé
-Sensor PIR ──────────────────────────────────────────────────>│
+                                                            │ semáforo LED
+Sensor ultrasónico ─────────────────────────────────────────────────>│
 Botón factory reset ─────────────────────────────────────────>│
 ```
 
@@ -24,7 +24,7 @@ Botón factory reset ───────────────────�
 
 - NVIDIA Jetson Nano Developer Kit **4 GB A02**, JetPack 4.6.1, L4T 32.7.1, Ubuntu 18.04, TensorRT 8.2.
 - Webcam USB NGS XPRESSCAM300 UVC (1903:8b28), YUYV 640 × 480, enfoque manual.
-- ESP32-C6, semáforo LED, buzzer, relé, PIR y pulsador de reinicio (cableado pendiente de registrar).
+- ESP32-C6, semáforo LED (rojo, amarillo, verde), sensor ultrasónico HC-SR04 y pulsador de factory reset (conexiones en `firmware/esp32c6/README.md`).
 - MicroSD 32 GB; fuente Jetson 5 V / 3 A por jack con jumper J48 (según pruebas reportadas por el equipo).
 
 ## Compilar el daemon
@@ -73,7 +73,7 @@ Cada decisión guarda una imagen `resultado_NN_<verde|rojo>.ppm`, que puede most
 
 ## ESP32-C6: compilar y flashear (ESP-IDF)
 
-Firmware completo en `firmware/esp32c6/` (semáforo, buzzer, relé, PIR, botón de factory reset, latido con fail-safe y telemetría), compilado y verificado con **ESP-IDF v5.5.6**. Pines, conexiones y pasos: `firmware/esp32c6/README.md` y `docs/firmware_guia_paso_a_paso.md`. Protocolo: `docs/protocolo_uart.md`. Para probarlo sin la Jetson está `firmware/esp32c6/tools/sim_jetson.py`.
+Firmware completo en `firmware/esp32c6/` (semáforo, sensor ultrasónico, botón de factory reset, latido con fail-safe y telemetría), compilado y verificado con **ESP-IDF v5.5.6**. Pines, conexiones y pasos: `firmware/esp32c6/README.md` y `docs/firmware_guia_paso_a_paso.md`. Protocolo: `docs/protocolo_uart.md`. Para probarlo sin la Jetson está `firmware/esp32c6/tools/sim_jetson.py`.
 
 Pruebas del protocolo en un PC (18 pruebas Unity):
 

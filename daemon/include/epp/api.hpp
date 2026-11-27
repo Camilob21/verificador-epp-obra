@@ -19,6 +19,7 @@
 #include "epp/http.hpp"
 #include "epp/instrumentacion.hpp"
 #include "epp/maquina_estados.hpp"
+#include "epp/puesta_en_marcha.hpp"
 
 namespace epp {
 
@@ -70,6 +71,7 @@ struct Instantanea {
   Luz luz = Luz::APAGADO;
   bool rele = false;
   std::string mensaje;
+  double cuenta_regresiva = -1;  // segundos restantes para acomodarse; -1 = no hay cuenta
   double fps = 0, inferencia_ms = 0, preproceso_ms = 0;
   unsigned long long cuadros = 0;
   int verdes = 0, rojos = 0;
@@ -77,16 +79,25 @@ struct Instantanea {
   Evento ultimo;
   // enlace con el ESP32
   bool hay_uart = false;
-  bool enlace_ok = false;
+  bool enlace_ok = false;  // hay trafico valido del ESP32 en el ultimo segundo
   EstadisticasEnlace enlace;
   proto_stats_t parser{};
   bool hay_telemetria = false;
   proto_telemetria_t telemetria{};
   bool pir = false;
+  bool hay_distancia = false;   // el ESP32 tiene el HC-SR04 y ya envio al menos una medicion
+  bool distancia_valida = false;
+  double distancia_m = 0;
   // sistema
   MuestreadorSistema sistema;
   bool registro_activo = false;
   bool camara_en_vivo = false;
+  // puesta en marcha, reloj y factory reset
+  bool en_puesta_en_marcha = false;
+  EstadoPuesta puesta;
+  std::string hora;               // hora local del equipo (ISO 8601)
+  bool hora_sincronizada = false; // la hora llego por la red en este arranque
+  bool restaurando = false;       // se pidio el factory reset; el equipo se reinicia en segundos
 };
 
 using FuenteEventos = std::function<std::vector<Evento>(int limite)>;

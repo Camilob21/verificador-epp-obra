@@ -1,0 +1,16 @@
+# Reloj sin RTC (2/2): pide la hora por HTTP hasta conseguirla (sin limite de intentos) y la
+# guarda cada 10 min. Si el script termina por cualquier motivo, systemd lo relanza.
+[Unit]
+Description=Hora por HTTP (sincroniza al haber red y guarda la hora periodicamente)
+Wants=network-online.target
+After=network-online.target hora-http.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/hora-http.sh sincronizar
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

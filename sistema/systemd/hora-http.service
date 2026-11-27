@@ -1,0 +1,17 @@
+# Reloj sin RTC (1/2): al arrancar adelanta el reloj a la ultima hora guardada; al apagar la guarda.
+# Es rapido a proposito: epp-daemon arranca despues de este servicio sin esperar a la red.
+[Unit]
+Description=Restaurar la ultima hora conocida (Jetson sin pila de RTC)
+DefaultDependencies=no
+After=local-fs.target
+Before=sysinit.target shutdown.target epp-daemon.service
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/hora-http.sh restaurar
+ExecStop=/usr/local/bin/hora-http.sh guardar
+
+[Install]
+WantedBy=sysinit.target

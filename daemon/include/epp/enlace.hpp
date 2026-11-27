@@ -25,9 +25,11 @@ namespace epp {
 proto_estado_t estadoDeLuz(Luz luz);
 
 struct EventoEsp32 {
-  enum class Tipo { PIR, BOTON, ENLACE_PERDIDO, ENLACE_RESTABLECIDO, ARRANQUE, TELEMETRIA, NACK, SIN_ACK } tipo;
+  enum class Tipo { PIR, BOTON, ENLACE_PERDIDO, ENLACE_RESTABLECIDO, ARRANQUE, TELEMETRIA, NACK, SIN_ACK, DISTANCIA } tipo;
   bool presencia = false;   // PIR
   bool pir_listo = false;   // PIR
+  uint16_t distancia_mm = 0;      // DISTANCIA (HC-SR04)
+  bool distancia_valida = false;  // DISTANCIA: false = sin eco o fuera de alcance
   uint8_t motivo = 0;       // ARRANQUE: motivo de reinicio del ESP32
   uint8_t fw_mayor = 0, fw_menor = 0;
   uint8_t tipo_rechazado = 0, codigo = 0;  // NACK / SIN_ACK (tipo que se dejo de reintentar)

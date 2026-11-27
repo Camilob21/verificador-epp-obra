@@ -128,3 +128,106 @@ TEST(Maquina, ElReleSoloSeActivaEnVerde) {
     if (s.estado != Estado::RESULTADO_VERDE) EXPECT_FALSE(s.rele);
   }
 }
+
+TEST(Maquina, ConSensorPideAcercarLaMano) {
+  ConfigMaquina cm;
+  cm.usar_pir = true;
+  MaquinaEstados m(cm);
+  const Salida s = m.actualizar(0.0, false, {});
+  EXPECT_EQ(s.estado, Estado::REPOSO);
+  EXPECT_NE(s.mensaje.find("Acerque la mano"), std::string::npos);
+}
+
+TEST(Maquina, LaManoEsUnDisparoQueEsperaALaPersona) {
+  // Modo sin cuenta regresiva: la mano esta 0,3 s y se retira; la persona tarda ~4 s en
+  // llegar a la marca. La espera no debe cancelarse al retirar la mano.
+  ConfigMaquina cm;
+  cm.usar_pir = true;
+  cm.cuenta_regresiva_s = 0;
+  MaquinaEstados m(cm);
+  double t = 0;
+  Salida s = correr(m, t, 0.3, {}, /*pir=*/true);
+  EXPECT_EQ(s.estado, Estado::ESPERANDO_PERSONA);
+  s = correr(m, t, 4.0, {}, /*pir=*/false);  // camina hacia la marca, sin presencia en el sensor
+  EXPECT_EQ(s.estado, Estado::ESPERANDO_PERSONA);
+  s = correr(m, t, 0.5, {PERSONA}, /*pir=*/false);  // ya en la marca
+  EXPECT_EQ(s.estado, Estado::VERIFICANDO);
+}
+
+TEST(Maquina, SiNadieLlegaALaMarcaVuelveAReposo) {
+  ConfigMaquina cm;
+  cm.usar_pir = true;
+  cm.cuenta_regresiva_s = 0;
+  MaquinaEstados m(cm);
+  double t = 0;
+  correr(m, t, 0.3, {}, /*pir=*/true);
+  Salida s = correr(m, t, 19.0, {}, /*pir=*/false);
+  EXPECT_EQ(s.estado, Estado::ESPERANDO_PERSONA);  // aun dentro de los 20 s
+  s = correr(m, t, 2.0, {}, /*pir=*/false);
+  EXPECT_EQ(s.estado, Estado::REPOSO);
+  EXPECT_FALSE(s.rele);
+}
+
+// ---- Flujo con cuenta regresiva (por defecto con sensor desde el 26-nov)
+
+TEST(Maquina, LaManoIniciaUnaCuentaRegresivaDe10s) {
+  ConfigMaquina cm;
+  cm.usar_pir = true;  // cuenta_regresiva_s = 10 por defecto
+  MaquinaEstados m(cm);
+  double t = 0;
+  Salida s = m.actualizar(t, true, {});
+  EXPECT_EQ(s.estado, Estado::ESPERANDO_PERSONA);
+  EXPECT_NEAR(s.segundos_restantes, 10.0, 1e-9);
+  EXPECT_NE(s.mensaje.find("torso y la cabeza"), std::string::npos);
+  t = DT;
+  s = correr(m, t, 4.0, {}, /*pir=*/false);  // la mano ya se retiro: la cuenta sigue
+  EXPECT_EQ(s.estado, Estado::ESPERANDO_PERSONA);
+  EXPECT_NEAR(s.segundos_restantes, 6.0, 0.1);
+  EXPECT_FALSE(s.rele);
+}
+
+TEST(Maquina, AlTerminarLaCuentaVerificaSinExigirEncuadre) {
+  ConfigMaquina cm;
+  cm.usar_pir = true;
+  MaquinaEstados m(cm);
+  double t = 0;
+  correr(m, t, DT, {}, true);
+  Salida s = correr(m, t, 9.5, {LEJANA}, false);  // persona pequena: antes nunca habria empezado
+  EXPECT_EQ(s.estado, Estado::ESPERANDO_PERSONA);
+  s = correr(m, t, 0.6, {LEJANA}, false);
+  EXPECT_EQ(s.estado, Estado::VERIFICANDO);
+  EXPECT_LT(s.segundos_restantes, 0);  // ya no hay cuenta regresiva
+}
+
+TEST(Maquina, CuentaRegresivaConCascoYChalecoDaVerde) {
+  ConfigMaquina cm;
+  cm.usar_pir = true;
+  MaquinaEstados m(cm);
+  double t = 0;
+  correr(m, t, DT, {}, true);
+  correr(m, t, 10.2, {PERSONA}, false);  // fin de la cuenta
+  const Salida s = correr(m, t, 2.0, {PERSONA, CASCO, CHALECO}, false);
+  EXPECT_EQ(s.estado, Estado::RESULTADO_VERDE);
+  EXPECT_TRUE(s.rele);
+}
+
+TEST(Maquina, CuentaRegresivaSinNadieDaRojoNoSeVerifica) {
+  // Ante la duda, rojo: si al terminar la cuenta no hay nadie visible, no se deja pasar.
+  ConfigMaquina cm;
+  cm.usar_pir = true;
+  MaquinaEstados m(cm);
+  double t = 0;
+  correr(m, t, DT, {}, true);
+  correr(m, t, 10.2, {}, false);
+  const Salida s = correr(m, t, 4.5, {}, false);
+  EXPECT_EQ(s.estado, Estado::RESULTADO_ROJO);
+  EXPECT_FALSE(s.rele);
+  EXPECT_NE(s.mensaje.find("No se pudo verificar"), std::string::npos);
+}
+
+TEST(Maquina, SinSensorNoHayCuentaRegresiva) {
+  MaquinaEstados m;  // usar_pir = false: se mantiene el criterio de encuadre
+  const Salida s = m.actualizar(0.0, false, {});
+  EXPECT_EQ(s.estado, Estado::ESPERANDO_PERSONA);
+  EXPECT_LT(s.segundos_restantes, 0);
+}

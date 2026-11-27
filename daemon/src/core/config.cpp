@@ -95,6 +95,8 @@ const std::map<std::string, Aplicador>& tabla() {
       {"uart", texto(&Config::uart)},
       {"dir_evidencia", texto(&Config::dir_evidencia)},
       {"db", texto(&Config::db)},
+      {"marca_puesta_en_marcha", texto(&Config::marca_puesta_en_marcha)},
+      {"solicitud_fabrica", texto(&Config::solicitud_fabrica)},
       {"api_direccion",
        [](Config& c, const std::string& v) -> std::string {
          // solo IPv4 en forma de cuatro numeros; la validacion fina la hace inet_pton al abrir
@@ -204,6 +206,13 @@ const std::map<std::string, Aplicador>& tabla() {
       {"ventana_verificacion_s", segundos(&ConfigMaquina::ventana_verificacion_s, 0.2, 30.0)},
       {"espera_max_verificacion_s", segundos(&ConfigMaquina::espera_max_verificacion_s, 0.5, 60.0)},
       {"espera_max_persona_s", segundos(&ConfigMaquina::espera_max_persona_s, 1.0, 600.0)},
+      {"cuenta_regresiva_s",
+       [](Config& c, const std::string& v) -> std::string {
+         double d;
+         if (!aDouble(v, d) || d < 0.0 || d > 60.0) return "debe ser un tiempo entre 0 y 60 s (0 = criterio de encuadre)";
+         c.maquina.cuenta_regresiva_s = d;
+         return "";
+       }},
       // El ESP32 corta el verde a los 8 s pase lo que pase; por eso el maximo es 8.
       {"duracion_resultado_s", segundos(&ConfigMaquina::duracion_resultado_s, 1.0, 8.0)},
   };
@@ -267,6 +276,8 @@ std::string describirConfig(const Config& c) {
     << (c.api_puerto ? c.api_direccion + ":" + std::to_string(c.api_puerto) : std::string("(sin API)"))
     << " camara_en_vivo=" << (c.camara_en_vivo ? "si" : "no") << " evidencias=" << (c.guardar_evidencia ? "si" : "no")
     << " (max " << c.max_evidencias << ")\n"
+    << "puesta en marcha: " << (c.marca_puesta_en_marcha.empty() ? "(desactivada)" : c.marca_puesta_en_marcha)
+    << " factory reset: " << (c.solicitud_fabrica.empty() ? "(solo se registra)" : c.solicitud_fabrica) << "\n"
     << "decision: persona>=" << c.decision.umbral_persona << " prenda>=" << c.decision.umbral_prenda
     << " fraccion>=" << c.decision.fraccion_minima << " cuadros>=" << c.decision.cuadros_minimos
     << " casco=" << (c.decision.exigir_casco ? "si" : "no") << " chaleco=" << (c.decision.exigir_chaleco ? "si" : "no")
@@ -274,7 +285,8 @@ std::string describirConfig(const Config& c) {
     << "maquina: pir=" << (c.maquina.usar_pir ? "si" : "no") << " alto>=" << c.maquina.alto_minimo
     << " margen=" << c.maquina.margen_centro << " ventana=" << c.maquina.ventana_verificacion_s
     << "s max_verif=" << c.maquina.espera_max_verificacion_s << "s max_persona=" << c.maquina.espera_max_persona_s
-    << "s resultado=" << c.maquina.duracion_resultado_s << "s";
+    << "s resultado=" << c.maquina.duracion_resultado_s << "s cuenta_regresiva=" << c.maquina.cuenta_regresiva_s
+    << "s";
   return o.str();
 }
 

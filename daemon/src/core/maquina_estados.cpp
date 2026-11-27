@@ -63,13 +63,22 @@ Salida MaquinaEstados::actualizar(double t, bool pir, const Detecciones& dets) {
     case Estado::REPOSO:
       if (!cfg_.usar_pir || pir) {
         entrar(Estado::ESPERANDO_PERSONA, t);
-        ultimo_mensaje_ = "Parese en la marca, de frente a la camara";
+        ultimo_mensaje_ = conCuentaRegresiva() ? "Colocate en una posicion donde se te vea el torso y la cabeza"
+                                               : "Parese en la marca, de frente a la camara";
       } else {
-        ultimo_mensaje_ = "";
+        // Con sensor de presencia (HC-SR04 como boton sin contacto) se espera la mano
+        ultimo_mensaje_ = "Acerque la mano al sensor para comenzar";
       }
       break;
 
     case Estado::ESPERANDO_PERSONA:
+      if (conCuentaRegresiva()) {
+        if (transcurrido >= cfg_.cuenta_regresiva_s) {
+          entrar(Estado::VERIFICANDO, t);
+          ultimo_mensaje_ = "Verificando, quedese quieto";
+        }
+        break;
+      }
       seguidos_en_posicion_ = personaEnPosicion(dets) ? seguidos_en_posicion_ + 1 : 0;
       if (seguidos_en_posicion_ >= cfg_.cuadros_en_posicion) {
         entrar(Estado::VERIFICANDO, t);
@@ -120,6 +129,10 @@ Salida MaquinaEstados::actualizar(double t, bool pir, const Detecciones& dets) {
   s.rele = (estado_ == Estado::RESULTADO_VERDE);
   s.cambio = (estado_ != antes);
   s.mensaje = ultimo_mensaje_;
+  if (estado_ == Estado::ESPERANDO_PERSONA && conCuentaRegresiva()) {
+    const double r = cfg_.cuenta_regresiva_s - (t - t_entrada_);
+    s.segundos_restantes = r > 0 ? r : 0;
+  }
   return s;
 }
 

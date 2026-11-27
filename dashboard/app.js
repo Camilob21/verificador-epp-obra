@@ -34,6 +34,69 @@ function duracion(s) {
 
 function texto(id, valor) { $(id).textContent = valor; }
 
+// Formatea un numero; si el campo no viene (p. ej. un daemon mas viejo que el dashboard) muestra "—"
+// en vez de lanzar un error que dejaria todo el panel en "Sin datos".
+function num(v, decimales = 0, sufijo = '') {
+  return typeof v === 'number' && Number.isFinite(v) ? `${v.toFixed(decimales)}${sufijo}` : '—';
+}
+
+let vivoActivo = false;  // el bucle de imagenes corre solo mientras el panel esta visible
+
+function marcar(id, ok) {
+  const li = $(id);
+  li.classList.toggle('ok', Boolean(ok));
+  li.querySelector('.marca').textContent = ok ? '✔' : '✘';
+}
+
+function mostrarPuesta(e) {
+  const p = e.puesta_en_marcha;
+  $('panel-restaurando').hidden = !e.restaurando;
+  $('panel-puesta').hidden = !p;
+  if (!p) return;
+  marcar('pm-camara', p.camara);
+  marcar('pm-esp32', p.esp32);
+  marcar('pm-sensor', p.sensor);
+  marcar('pm-hora', p.hora);
+  texto('pm-hora-texto', p.hora ? '' : '(opcional: sin internet las fechas de los eventos no son confiables)');
+  const total = typeof p.confirmacion_total_s === 'number' && p.confirmacion_total_s > 0 ? p.confirmacion_total_s : 3;
+  texto('pm-total', num(total));
+  const pct = Math.min(100, Math.max(0, 100 * (p.confirmacion_s || 0) / total));
+  $('pm-barra').style.width = `${pct}%`;
+  $('pm-barra').parentElement.setAttribute('aria-valuenow', pct.toFixed(0));
+}
+
+function mostrarVivo(e) {
+  // La camara se muestra en cuanto el sensor detecta a alguien (todo estado distinto de REPOSO)
+  // y durante la puesta en marcha, para poder acomodarla
+  const visible = Boolean(e.camara_en_vivo) && (e.estado !== 'REPOSO' || Boolean(e.puesta_en_marcha));
+  $('panel-vivo').hidden = !visible;
+  if (visible && !vivoActivo) {
+    vivoActivo = true;
+    refrescarVivo();
+  }
+  vivoActivo = visible;
+
+  const sup = $('superpuesto');
+  if (typeof e.cuenta_regresiva === 'number') {
+    sup.hidden = false;
+    sup.className = 'superpuesto';
+    texto('cronometro', Math.ceil(e.cuenta_regresiva));
+    texto('indicacion', 'Colócate en una posición donde se te vea el torso y la cabeza');
+  } else if (e.estado === 'VERIFICANDO') {
+    sup.hidden = false;
+    sup.className = 'superpuesto';
+    texto('cronometro', '');
+    texto('indicacion', 'Verificando… quédate quieto');
+  } else if (e.estado === 'RESULTADO_VERDE' || e.estado === 'RESULTADO_ROJO') {
+    sup.hidden = false;
+    sup.className = `superpuesto ${e.estado === 'RESULTADO_VERDE' ? 'sup-verde' : 'sup-rojo'}`;
+    texto('cronometro', e.estado === 'RESULTADO_VERDE' ? 'PUEDE PASAR' : 'NO CUMPLE');
+    texto('indicacion', e.mensaje || '');
+  } else {
+    sup.hidden = true;
+  }
+}
+
 function celda(fila, valor, clase) {
   const td = document.createElement('td');
   td.textContent = valor;
@@ -53,20 +116,25 @@ async function actualizarEstado() {
     const e = await pedir('/api/estado');
     $('conexion').textContent = 'en línea';
     $('conexion').className = 'chip chip-bien';
-    texto('estado', NOMBRES_ESTADO[e.estado] || e.estado);
+    let titulo = NOMBRES_ESTADO[e.estado] || e.estado;
+    if (e.restaurando) titulo = 'Restaurando';
+    else if (e.puesta_en_marcha) titulo = 'Puesta en marcha';
+    else if (typeof e.cuenta_regresiva === 'number') titulo = `Acomódate: ${Math.ceil(e.cuenta_regresiva)} s`;
+    texto('estado', titulo);
+    texto('hora', e.hora ? e.hora.replace('T', ' ').slice(0, 19) : '—');
+    texto('hora-aviso', e.hora && e.hora_sincronizada === false ? '(sin sincronizar por internet)' : '');
+    mostrarPuesta(e);
     texto('mensaje', e.mensaje || '—');
-    $('luz').className = `luz ${claseLuz(e.luz)}`;
-    texto('rele', e.rele ? 'activado' : 'apagado');
-    texto('esp32', !e.esp32.configurado ? 'no configurado' : (e.esp32.enlace ? 'enlazado' : 'SIN ENLACE'));
-    texto('pir', e.esp32.pir ? 'presencia' : 'sin presencia');
-    texto('verdes', e.verdes);
-    texto('rojos', e.rojos);
-    texto('fps', e.fps.toFixed(1));
-    texto('inferencia', e.inferencia_ms.toFixed(0));
-    if (e.camara_en_vivo && $('panel-vivo').hidden) {
-      $('panel-vivo').hidden = false;
-      refrescarVivo();
-    }
+    $('luz').className = `luz ${claseLuz(e.luz || '')}`;
+    const esp = e.esp32 || {};
+    texto('esp32', !esp.configurado ? 'no configurado' : (esp.enlace ? 'enlazado' : 'SIN ENLACE'));
+    texto('pir', esp.pir ? 'sí' : 'no');
+    texto('distancia', num(esp.distancia_m, 2, ' m'));
+    texto('verdes', num(e.verdes));
+    texto('rojos', num(e.rojos));
+    texto('fps', num(e.fps, 1));
+    texto('inferencia', num(e.inferencia_ms));
+    mostrarVivo(e);
   } catch (err) {
     $('conexion').textContent = 'sin conexión con el daemon';
     $('conexion').className = 'chip chip-mal';
@@ -100,15 +168,15 @@ async function actualizarEventos() {
 async function actualizarSistema() {
   try {
     const s = await pedir('/api/sistema');
-    texto('cpu', s.cpu_pct === null ? '—' : s.cpu_pct.toFixed(0));
-    texto('gpu', s.gpu_pct === null ? '—' : s.gpu_pct.toFixed(0));
-    const m = s.memoria;
+    texto('cpu', num(s.cpu_pct));
+    texto('gpu', num(s.gpu_pct));
+    const m = s.memoria || {};
     texto('mem', m.total_kb ? (100 * (1 - m.disponible_kb / m.total_kb)).toFixed(0) : '—');
     texto('uptime', duracion(s.uptime_s));
-    texto('temperaturas', s.temperaturas.map((t) => `${t.zona}: ${t.c.toFixed(1)} °C`).join(' · ') || '—');
+    texto('temperaturas', (s.temperaturas || []).map((t) => `${t.zona}: ${num(t.c, 1)} °C`).join(' · ') || '—');
     const red = $('red');
     red.replaceChildren();
-    for (const r of s.red) {
+    for (const r of s.red || []) {
       const tr = document.createElement('tr');
       celda(tr, r.interfaz);
       celda(tr, bytes(r.rx_bytes));
@@ -136,6 +204,7 @@ async function actualizarSistema() {
 // Vista en vivo: pide la siguiente imagen solo cuando terminó de cargar la anterior (~5 por segundo),
 // así una red lenta no acumula peticiones.
 function refrescarVivo() {
+  if (!vivoActivo) return;  // panel oculto: no se piden imagenes
   const img = $('vivo');
   img.onload = () => { texto('vivo-aviso', ''); setTimeout(refrescarVivo, 200); };
   img.onerror = () => { texto('vivo-aviso', 'Sin imagen de la cámara en este momento.'); setTimeout(refrescarVivo, 1000); };
@@ -145,6 +214,6 @@ function refrescarVivo() {
 actualizarEstado();
 actualizarEventos();
 actualizarSistema();
-setInterval(actualizarEstado, 500);
+setInterval(actualizarEstado, 300);  // 300 ms: el cronometro avanza sin saltos visibles
 setInterval(actualizarEventos, 3000);
 setInterval(actualizarSistema, 2000);

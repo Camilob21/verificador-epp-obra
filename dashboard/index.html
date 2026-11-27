@@ -12,18 +12,43 @@
     <span id="conexion" class="chip chip-mal">sin datos</span>
   </header>
   <main>
+    <section id="panel-restaurando" class="aviso-fuerte" hidden>
+      <h2>Restaurando valores de fábrica…</h2>
+      <p>Se borran los eventos y las fotos y el equipo vuelve a la puesta en marcha. Espere unos segundos.</p>
+    </section>
+
+    <section id="panel-puesta" hidden aria-live="polite">
+      <h2>Puesta en marcha</h2>
+      <p class="pequeno">El equipo todavía <strong>no controla el acceso</strong>. Revise cada punto y confirme al final (ver el manual de usuario).</p>
+      <ul class="lista-puesta">
+        <li id="pm-camara"><span class="marca"></span>Cámara: llegan imágenes. Acomódela para que se vea a una persona de cuerpo entero en la marca del piso.</li>
+        <li id="pm-esp32"><span class="marca"></span>Microcontrolador (ESP32): enlazado por el cable.</li>
+        <li id="pm-sensor"><span class="marca"></span>Sensor: detectó la mano (5 a 40 cm).</li>
+        <li id="pm-hora" class="informativo"><span class="marca"></span>Hora sincronizada por internet <span id="pm-hora-texto" class="pequeno"></span></li>
+      </ul>
+      <p><strong>Para confirmar:</strong> mantenga la mano frente al sensor durante <span id="pm-total">3</span> s.</p>
+      <div class="barra" role="progressbar" aria-label="Confirmación" aria-valuemin="0" aria-valuemax="100"><div id="pm-barra"></div></div>
+    </section>
+
     <section id="panel-estado" aria-live="polite">
       <div id="luz" class="luz luz-apagado" aria-hidden="true"></div>
       <div>
         <h2 id="estado">—</h2>
         <p id="mensaje">Esperando datos del sistema…</p>
-        <p class="pequeno">Relé: <strong id="rele">—</strong> · ESP32: <strong id="esp32">—</strong> · PIR: <strong id="pir">—</strong></p>
+        <p class="pequeno">ESP32: <strong id="esp32">—</strong> · Presencia: <strong id="pir">—</strong> · Distancia: <strong id="distancia">—</strong></p>
+        <p class="pequeno">Hora del equipo: <strong id="hora">—</strong> <span id="hora-aviso" class="texto-aviso"></span></p>
       </div>
     </section>
 
     <section id="panel-vivo" hidden>
       <h2>Cámara en vivo</h2>
-      <img id="vivo" alt="Imagen actual de la cámara con las detecciones dibujadas" width="640" height="480">
+      <div class="vivo-contenedor">
+        <img id="vivo" alt="Imagen actual de la cámara con las detecciones dibujadas" width="640" height="480">
+        <div id="superpuesto" class="superpuesto" hidden>
+          <div id="cronometro" class="cronometro"></div>
+          <div id="indicacion" class="indicacion"></div>
+        </div>
+      </div>
       <p id="vivo-aviso" class="pequeno"></p>
       <ul class="leyenda pequeno">
         <li><i style="background:rgb(40,90,255)"></i>persona</li>

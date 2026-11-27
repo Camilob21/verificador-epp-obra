@@ -3,9 +3,9 @@
 | ID | Requisito | Criterio de aceptación a definir/verificar | Estado |
 |---|---|---|---|
 | RF-01 | Detectar casco y chaleco | Ensayo con personas y EPP real, cuadro temporal y umbrales medidos | Pendiente |
-| RF-02 | Negar ante ausencia de EPP o tiempo agotado | Nunca activar relé en escenarios adversos | Pendiente |
+| RF-02 | Negar ante ausencia de EPP o tiempo agotado | Nunca dar verde en escenarios adversos | Pendiente |
 | RF-03 | Intercambio UART Jetson–ESP32 con CRC | Pruebas de integridad, corrupción y reconexión | Pendiente |
-| RF-04 | Falla de latido implica rojo | Desconectar Jetson y medir tiempo/cambio de relé | Pendiente |
+| RF-04 | Falla de latido implica rojo | Desconectar Jetson y medir el tiempo hasta el rojo de enlace perdido | Pendiente |
 | RF-05 | Bring-up y factory reset | Arranque guiado y retorno desde estado configurado | Pendiente |
 | RF-06 | Administrador web + interfaz física | Pruebas de autenticación, estado y trazabilidad | Pendiente |
 | RF-07 | Instrumentación software | CPU, memoria, periféricos, tráfico y puertos visibles | Pendiente |

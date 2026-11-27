@@ -70,13 +70,27 @@ std::string jsonEstado(const Instantanea& s) {
   std::ostringstream o;
   o << "{\"t_s\":" << jsonNumero(s.t_s, 1) << ",\"estado\":" << jsonTexto(nombreEstado(s.estado))
     << ",\"luz\":" << jsonTexto(nombreLuz(s.luz)) << ",\"rele\":" << jsonBool(s.rele)
-    << ",\"mensaje\":" << jsonTexto(s.mensaje) << ",\"fps\":" << jsonNumero(s.fps, 1)
+    << ",\"mensaje\":" << jsonTexto(s.mensaje)
+    << ",\"cuenta_regresiva\":" << (s.cuenta_regresiva < 0 ? "null" : jsonNumero(s.cuenta_regresiva, 1))
+    << ",\"fps\":" << jsonNumero(s.fps, 1)
     << ",\"inferencia_ms\":" << jsonNumero(s.inferencia_ms, 1) << ",\"preproceso_ms\":" << jsonNumero(s.preproceso_ms, 1)
     << ",\"cuadros\":" << s.cuadros << ",\"verdes\":" << s.verdes << ",\"rojos\":" << s.rojos
     << ",\"ultimo\":" << (s.hay_ultimo ? jsonEvento(s.ultimo) : "null") << ",\"esp32\":{\"configurado\":"
-    << jsonBool(s.hay_uart) << ",\"enlace\":" << jsonBool(s.enlace_ok) << ",\"pir\":" << jsonBool(s.pir) << "}"
+    << jsonBool(s.hay_uart) << ",\"enlace\":" << jsonBool(s.enlace_ok) << ",\"pir\":" << jsonBool(s.pir)
+    << ",\"distancia_m\":" << (s.hay_distancia && s.distancia_valida ? jsonNumero(s.distancia_m, 3) : "null") << "}"
     << ",\"registro\":" << jsonBool(s.registro_activo) << ",\"camara_en_vivo\":" << jsonBool(s.camara_en_vivo)
-    << "}";
+    << ",\"hora\":" << jsonTexto(s.hora) << ",\"hora_sincronizada\":" << jsonBool(s.hora_sincronizada)
+    << ",\"restaurando\":" << jsonBool(s.restaurando) << ",\"puesta_en_marcha\":";
+  if (!s.en_puesta_en_marcha) {
+    o << "null";
+  } else {
+    const auto& p = s.puesta;
+    o << "{\"camara\":" << jsonBool(p.camara) << ",\"esp32\":" << jsonBool(p.esp32) << ",\"sensor\":"
+      << jsonBool(p.sensor) << ",\"hora\":" << jsonBool(p.hora) << ",\"confirmacion_s\":"
+      << jsonNumero(p.confirmacion_s, 1) << ",\"confirmacion_total_s\":" << jsonNumero(p.confirmacion_total_s, 1)
+      << ",\"completa\":" << jsonBool(p.completa) << "}";
+  }
+  o << "}";
   return o.str();
 }
 

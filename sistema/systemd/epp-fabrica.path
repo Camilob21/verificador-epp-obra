@@ -1,0 +1,10 @@
+# Vigila la solicitud de factory reset que crea epp-daemon al recibir el boton del ESP32.
+# El daemon corre como usuario epp sin privilegios; el borrado lo hace epp-fabrica.service (root).
+[Unit]
+Description=Vigilar la solicitud de factory reset del verificador de EPP
+
+[Path]
+PathExists=/var/lib/epp/solicitud_fabrica
+
+[Install]
+WantedBy=multi-user.target
