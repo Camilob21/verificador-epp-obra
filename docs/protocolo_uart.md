@@ -1,5 +1,7 @@
 # Protocolo UART Jetson Nano ↔ ESP32-C6 (v1)
 
+> **Prototipo final:** no se montan el relé ni el buzzer; la autorización se indica con el LED verde. El firmware los conserva (relé en GPIO19, buzzer en GPIO20) como **mejora futura**, por eso esta documentación técnica los sigue describiendo. Las secciones y pruebas de relé y buzzer no aplican al prototipo.
+
 Implementación de referencia: `common/protocolo/` (C99, sin dependencias). La usan el firmware del ESP32 y el daemon de la Jetson. **Esta biblioteca es el contrato entre los dos lados**: si alguien cambia el formato, cambia la biblioteca, esta tabla y la prueba PU-18. No hay dos implementaciones distintas.
 
 ## 1. Capa física

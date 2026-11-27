@@ -1,5 +1,7 @@
 # Matriz de verificación: firmware ESP32-C6 y protocolo UART
 
+> **Prototipo final:** no se montan el relé ni el buzzer; la autorización se indica con el LED verde. El firmware los conserva (relé en GPIO19, buzzer en GPIO20) como **mejora futura**, por eso esta documentación técnica los sigue describiendo. Las secciones y pruebas de relé y buzzer no aplican al prototipo.
+
 **Roles** (complete con nombres): **Impl.** = quién implementa, **Prueba** = quién ejecuta la prueba. Se recomienda que quien prueba no sea quien implementó.
 La columna **Resultado** se llena con PASA/FALLA, la fecha y la evidencia (captura, archivo o video).
 Las filas marcadas con ✔ en "Ya verificado" se ejecutaron en el entorno de desarrollo de Claude (sin hardware) y **deben repetirse en su máquina**.

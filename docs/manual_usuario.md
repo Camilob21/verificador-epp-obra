@@ -23,7 +23,7 @@ Este equipo revisa, con una cámara, que la persona que va a entrar a la obra ll
 2. Conecte el cable de red a un router con internet (sirve un celular compartiendo datos con un
    adaptador).
 3. Conecte la alimentación. Al encender, las luces hacen una prueba: **rojo, amarillo, verde**,
-   con un pitido corto, y quedan en rojo. Si alguna luz no prende en la prueba, está dañada o
+   y quedan en rojo. Si alguna luz no prende en la prueba, está dañada o
    desconectada.
 4. Espere alrededor de **1 minuto** mientras el equipo arranca.
 
@@ -50,7 +50,7 @@ Mientras tanto la luz amarilla queda **fija** y el panel muestra el recuadro **"
 | Hora sincronizada (opcional) | Internet en el cable de red. Sin internet el equipo funciona, pero las fechas de los eventos pueden estar mal |
 
 **Para confirmar:** cuando los tres primeros puntos estén en ✔, **mantenga la mano frente al
-sensor 3 segundos** (la barra del panel se llena). Suena un tono, las luces se apagan y el equipo
+sensor 3 segundos** (la barra del panel se llena). Las luces se apagan y el equipo
 queda funcionando. Retire la mano.
 
 ## 5. Uso diario

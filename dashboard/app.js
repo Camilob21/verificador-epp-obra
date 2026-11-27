@@ -126,7 +126,6 @@ async function actualizarEstado() {
     mostrarPuesta(e);
     texto('mensaje', e.mensaje || '—');
     $('luz').className = `luz ${claseLuz(e.luz || '')}`;
-    texto('rele', e.rele ? 'activado' : 'apagado');
     const esp = e.esp32 || {};
     texto('esp32', !esp.configurado ? 'no configurado' : (esp.enlace ? 'enlazado' : 'SIN ENLACE'));
     texto('pir', esp.pir ? 'sí' : 'no');

@@ -49,7 +49,7 @@ journalctl -u epp-daemon -n 20 --no-pager                                       
 ## Puesta en marcha y factory reset
 
 - **Puesta en marcha**: mientras no exista `/var/lib/epp/puesta_en_marcha.ok`, el daemon no
-  controla el acceso (relé apagado, amarillo fijo) y el dashboard muestra la lista de
+  controla el acceso (nunca da verde; amarillo fijo) y el dashboard muestra la lista de
   comprobaciones. Se confirma con la mano frente al sensor 3 s; entonces el daemon crea el archivo.
 - **Factory reset**: botón del ESP32 sostenido 5 s → el ESP32 envía `EVENTO_BOTON` (con ACK) → el
   daemon (usuario `epp`, sin privilegios) crea `/var/lib/epp/solicitud_fabrica` →

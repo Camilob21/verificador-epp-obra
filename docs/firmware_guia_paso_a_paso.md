@@ -1,5 +1,7 @@
 # Guía paso a paso: firmware del ESP32-C6 (bring-up y verificación)
 
+> **Prototipo final:** no se montan el relé ni el buzzer; la autorización se indica con el LED verde. El firmware los conserva (relé en GPIO19, buzzer en GPIO20) como **mejora futura**, por eso esta documentación técnica los sigue describiendo. Las secciones y pruebas de relé y buzzer no aplican al prototipo.
+
 Formato de cada paso: **comando** (uno por bloque) → **salida esperada** → **criterio de aceptación** → **cuándo mostrarle la salida a Claude**. Anote cada resultado en la tabla del final (formato: afirmación → cómo se verificó → resultado), que sirve de registro para la declaración de uso de IA.
 
 Siga las partes en orden y no avance si un criterio falla.

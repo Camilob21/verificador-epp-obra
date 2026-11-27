@@ -1,4 +1,6 @@
-# Firmware ESP32-C6: semáforo, relé y sensores del verificador de EPP
+# Firmware ESP32-C6: semáforo y sensores del verificador de EPP
+
+> **Prototipo final:** no se montan el relé ni el buzzer; la autorización se indica con el LED verde. El firmware los conserva (relé en GPIO19, buzzer en GPIO20) como **mejora futura**, por eso esta documentación técnica los sigue describiendo. Las secciones y pruebas de relé y buzzer no aplican al prototipo.
 
 Firmware en C con ESP-IDF para la **ESP32-C6-DevKitC-1**. Maneja el semáforo (LEDs rojo, amarillo y verde), el buzzer, el relé, el sensor PIR y el botón de factory reset. Se comunica con la Jetson Nano por UART, con tramas protegidas por CRC, y tiene un fail-safe por latido.
 
